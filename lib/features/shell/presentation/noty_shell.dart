@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
 import 'package:noty/features/feed/data/local_notifications_repository.dart';
 import 'package:noty/features/feed/data/mock_notifications.dart';
 import 'package:noty/features/feed/data/native_notifications_bridge.dart';
+import 'package:noty/features/feed/data/supabase_notifications_sync.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
 import 'package:noty/features/search/presentation/search_page.dart';
@@ -25,10 +28,12 @@ class NotyShell extends StatefulWidget {
 class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   final LocalNotificationsRepository _repository = LocalNotificationsRepository();
   final NativeNotificationsBridge _nativeBridge = NativeNotificationsBridge();
+  final SupabaseNotificationsSync _supabaseSync = SupabaseNotificationsSync();
 
   int _index = 0;
   bool _isLoadingNotifications = true;
   bool _isNotificationListenerEnabled = false;
+  bool _isSyncingNotifications = false;
   String? _notificationsError;
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
@@ -74,6 +79,10 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         _notifications = buildMockNotifications();
         _isLoadingNotifications = false;
       });
+
+      if (widget.supabaseState.initialized) {
+        unawaited(_syncPendingNotifications());
+      }
       return;
     }
 
@@ -98,6 +107,10 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         _isLoadingNotifications = false;
         _isNotificationListenerEnabled = listenerEnabled;
       });
+
+      if (widget.supabaseState.initialized) {
+        unawaited(_syncPendingNotifications());
+      }
     } catch (_) {
       if (!mounted) {
         return;
@@ -110,8 +123,71 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _syncPendingNotifications() async {
+    if (!mounted || _isSyncingNotifications) {
+      return;
+    }
+
+    if (!widget.supabaseState.initialized) {
+      return;
+    }
+
+    if (!widget.enableLocalPersistence) {
+      return;
+    }
+
+    setState(() {
+      _isSyncingNotifications = true;
+    });
+
+    try {
+      final pending = await _repository.getPendingSync(limit: 100);
+      if (pending.isEmpty) {
+        if (!mounted) {
+          return;
+        }
+        setState(() {
+          _isSyncingNotifications = false;
+        });
+        return;
+      }
+
+      final result = await _supabaseSync.sync(pending);
+
+      if (result.syncedIds.isNotEmpty) {
+        await _repository.markAsSynced(result.syncedIds);
+      }
+
+      for (final failure in result.failed) {
+        await _repository.markAsSyncFailed(failure.notificationId, failure.message);
+      }
+
+      final refreshed = await _repository.getAll();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _notifications = refreshed;
+        _isSyncingNotifications = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isSyncingNotifications = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final pendingSyncCount =
+        _notifications.where((item) => item.needsSync).length;
+
     final tabs = <Widget>[
       FeedPage(
         notifications: _notifications,
@@ -127,6 +203,10 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       SettingsPage(
         supabaseState: widget.supabaseState,
         notificationListenerEnabled: _isNotificationListenerEnabled,
+        isSyncingNotifications: _isSyncingNotifications,
+        pendingSyncCount: pendingSyncCount,
+        canSyncNow: widget.supabaseState.initialized,
+        onSyncNow: _syncPendingNotifications,
         onOpenNotificationSettings: () async {
           await _nativeBridge.openNotificationListenerSettings();
         },

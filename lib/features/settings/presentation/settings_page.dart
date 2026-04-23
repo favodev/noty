@@ -6,11 +6,19 @@ class SettingsPage extends StatefulWidget {
     super.key,
     required this.supabaseState,
     required this.notificationListenerEnabled,
+    required this.isSyncingNotifications,
+    required this.pendingSyncCount,
+    required this.canSyncNow,
+    required this.onSyncNow,
     required this.onOpenNotificationSettings,
   });
 
   final SupabaseBootstrapState supabaseState;
   final bool notificationListenerEnabled;
+  final bool isSyncingNotifications;
+  final int pendingSyncCount;
+  final bool canSyncNow;
+  final Future<void> Function() onSyncNow;
   final Future<void> Function() onOpenNotificationSettings;
 
   @override
@@ -117,7 +125,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        status.subtitle,
+                        '${status.subtitle} · Pendientes: ${widget.pendingSyncCount}',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: const Color(0xFF64748B),
                             ),
@@ -141,6 +149,25 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            onPressed: widget.canSyncNow && !widget.isSyncingNotifications
+                ? widget.onSyncNow
+                : null,
+            icon: widget.isSyncingNotifications
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.cloud_upload_outlined),
+            label: Text(
+              widget.isSyncingNotifications ? 'Sincronizando...' : 'Sincronizar ahora',
             ),
           ),
         ),
