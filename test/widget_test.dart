@@ -4,7 +4,8 @@ import 'package:noty/app/noty_app.dart';
 
 void main() {
   testWidgets('Noty shell navigation smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const NotyApp());
+    await tester.pumpWidget(const NotyApp(enableLocalPersistence: false));
+    await tester.pumpAndSettle();
 
     expect(find.text('Historial reciente'), findsOneWidget);
 

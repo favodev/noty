@@ -7,9 +7,11 @@ class NotyApp extends StatelessWidget {
   const NotyApp({
     super.key,
     this.supabaseState = const SupabaseBootstrapState.notConfigured(),
+    this.enableLocalPersistence = true,
   });
 
   final SupabaseBootstrapState supabaseState;
+  final bool enableLocalPersistence;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +19,10 @@ class NotyApp extends StatelessWidget {
       title: 'NOTY',
       debugShowCheckedModeBanner: false,
       theme: buildNotyTheme(),
-      home: NotyShell(supabaseState: supabaseState),
+      home: NotyShell(
+        supabaseState: supabaseState,
+        enableLocalPersistence: enableLocalPersistence,
+      ),
     );
   }
 }

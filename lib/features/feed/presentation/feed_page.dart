@@ -1,16 +1,25 @@
 import 'package:flutter/material.dart';
-import 'package:noty/features/feed/data/mock_notifications.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 
 class FeedPage extends StatefulWidget {
-  const FeedPage({super.key});
+  const FeedPage({
+    super.key,
+    required this.notifications,
+    required this.isLoading,
+    required this.onRefreshRequested,
+    this.errorMessage,
+  });
+
+  final List<NotificationItem> notifications;
+  final bool isLoading;
+  final Future<void> Function() onRefreshRequested;
+  final String? errorMessage;
 
   @override
   State<FeedPage> createState() => _FeedPageState();
 }
 
 class _FeedPageState extends State<FeedPage> {
-  late final List<NotificationItem> _notifications;
   String _selectedApp = 'Todas';
   bool _onlyUnread = false;
   bool _showContent = false;
@@ -18,7 +27,6 @@ class _FeedPageState extends State<FeedPage> {
   @override
   void initState() {
     super.initState();
-    _notifications = buildMockNotifications();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         setState(() {
@@ -29,13 +37,13 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   List<String> get _appFilters {
-    final apps = <String>{for (final item in _notifications) item.appName};
+    final apps = <String>{for (final item in widget.notifications) item.appName};
     final sortedApps = apps.toList()..sort();
     return <String>['Todas', ...sortedApps];
   }
 
   List<NotificationItem> get _visibleItems {
-    final filtered = _notifications.where((item) {
+    final filtered = widget.notifications.where((item) {
       final matchesApp = _selectedApp == 'Todas' || item.appName == _selectedApp;
       final matchesUnread = !_onlyUnread || item.isUnread;
       return matchesApp && matchesUnread;
@@ -66,6 +74,12 @@ class _FeedPageState extends State<FeedPage> {
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: const Color(0xFF475569),
                 ),
+          ),
+          const SizedBox(height: 6),
+          TextButton.icon(
+            onPressed: widget.isLoading ? null : widget.onRefreshRequested,
+            icon: const Icon(Icons.refresh, size: 18),
+            label: const Text('Recargar historial local'),
           ),
           const SizedBox(height: 14),
           Row(
@@ -112,19 +126,26 @@ class _FeedPageState extends State<FeedPage> {
               opacity: _showContent ? 1 : 0,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 180),
-                child: items.isEmpty
-                    ? const _EmptyFeed()
-                    : ListView.separated(
-                        key: ValueKey<String>(
-                          '${_selectedApp}_${_onlyUnread}_${items.length}',
-                        ),
-                        itemCount: items.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final item = items[index];
-                          return _NotificationCard(item: item);
-                        },
-                      ),
+                child: widget.isLoading
+                    ? const _LoadingFeed()
+                    : widget.errorMessage != null
+                        ? _FeedError(
+                            message: widget.errorMessage!,
+                            onRetry: widget.onRefreshRequested,
+                          )
+                        : items.isEmpty
+                            ? const _EmptyFeed()
+                            : ListView.separated(
+                                key: ValueKey<String>(
+                                  '${_selectedApp}_${_onlyUnread}_${items.length}',
+                                ),
+                                itemCount: items.length,
+                                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
+                                  final item = items[index];
+                                  return _NotificationCard(item: item);
+                                },
+                              ),
               ),
             ),
           ),
@@ -252,6 +273,51 @@ class _EmptyFeed extends StatelessWidget {
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: const Color(0xFF64748B),
             ),
+      ),
+    );
+  }
+}
+
+class _LoadingFeed extends StatelessWidget {
+  const _LoadingFeed();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      key: ValueKey<String>('loading-feed'),
+      child: CircularProgressIndicator(),
+    );
+  }
+}
+
+class _FeedError extends StatelessWidget {
+  const _FeedError({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      key: const ValueKey<String>('error-feed'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            onPressed: onRetry,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Reintentar'),
+          ),
+        ],
       ),
     );
   }

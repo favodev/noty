@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
+import 'package:noty/features/feed/data/local_notifications_repository.dart';
+import 'package:noty/features/feed/data/mock_notifications.dart';
+import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
 import 'package:noty/features/search/presentation/search_page.dart';
 import 'package:noty/features/settings/presentation/settings_page.dart';
@@ -8,16 +11,23 @@ class NotyShell extends StatefulWidget {
   const NotyShell({
     super.key,
     required this.supabaseState,
+    this.enableLocalPersistence = true,
   });
 
   final SupabaseBootstrapState supabaseState;
+  final bool enableLocalPersistence;
 
   @override
   State<NotyShell> createState() => _NotyShellState();
 }
 
 class _NotyShellState extends State<NotyShell> {
+  final LocalNotificationsRepository _repository = LocalNotificationsRepository();
+
   int _index = 0;
+  bool _isLoadingNotifications = true;
+  String? _notificationsError;
+  List<NotificationItem> _notifications = const <NotificationItem>[];
 
   static const List<String> _titles = <String>[
     'Inicio',
@@ -26,10 +36,74 @@ class _NotyShellState extends State<NotyShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  @override
+  void dispose() {
+    _repository.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadNotifications() async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoadingNotifications = true;
+      _notificationsError = null;
+    });
+
+    if (!widget.enableLocalPersistence) {
+      setState(() {
+        _notifications = buildMockNotifications();
+        _isLoadingNotifications = false;
+      });
+      return;
+    }
+
+    try {
+      await _repository.initialize();
+      await _repository.seedIfEmpty(buildMockNotifications());
+      final notifications = await _repository.getAll();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _notifications = notifications;
+        _isLoadingNotifications = false;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _isLoadingNotifications = false;
+        _notificationsError = 'No pudimos cargar notificaciones locales.';
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final tabs = <Widget>[
-      const FeedPage(),
-      const SearchPage(),
+      FeedPage(
+        notifications: _notifications,
+        isLoading: _isLoadingNotifications,
+        errorMessage: _notificationsError,
+        onRefreshRequested: _loadNotifications,
+      ),
+      SearchPage(
+        notifications: _notifications,
+        isLoading: _isLoadingNotifications,
+        errorMessage: _notificationsError,
+      ),
       SettingsPage(supabaseState: widget.supabaseState),
     ];
 

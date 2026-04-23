@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:noty/features/feed/data/mock_notifications.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({
+    super.key,
+    required this.notifications,
+    required this.isLoading,
+    this.errorMessage,
+  });
+
+  final List<NotificationItem> notifications;
+  final bool isLoading;
+  final String? errorMessage;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> {
-  late final List<NotificationItem> _notifications;
   String _query = '';
 
-  @override
-  void initState() {
-    super.initState();
-    _notifications = buildMockNotifications();
-  }
-
   List<NotificationItem> get _results {
-    final filtered = _notifications.where((item) => item.matchesQuery(_query)).toList();
+    final filtered = widget.notifications.where((item) => item.matchesQuery(_query)).toList();
     filtered.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
     return filtered;
   }
@@ -66,32 +67,36 @@ class _SearchPageState extends State<SearchPage> {
               duration: const Duration(milliseconds: 180),
               switchInCurve: Curves.easeOut,
               switchOutCurve: Curves.easeIn,
-              child: !hasQuery
-                  ? const _SearchHint()
-                  : results.isEmpty
-                      ? const _NoSearchResults()
-                      : ListView.separated(
-                          key: ValueKey<String>('results-${results.length}-$_query'),
-                          itemCount: results.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final item = results[index];
-                            return Card(
-                              child: ListTile(
-                                title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                subtitle: Text(
-                                  '${item.appName} - ${item.body}',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
+              child: widget.isLoading
+                  ? const _SearchLoading()
+                  : widget.errorMessage != null
+                      ? _SearchError(message: widget.errorMessage!)
+                      : !hasQuery
+                          ? const _SearchHint()
+                          : results.isEmpty
+                              ? const _NoSearchResults()
+                              : ListView.separated(
+                                  key: ValueKey<String>('results-${results.length}-$_query'),
+                                  itemCount: results.length,
+                                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                  itemBuilder: (context, index) {
+                                    final item = results[index];
+                                    return Card(
+                                      child: ListTile(
+                                        title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        subtitle: Text(
+                                          '${item.appName} - ${item.body}',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: Text(
+                                          _hourMinute(item.receivedAt),
+                                          style: Theme.of(context).textTheme.labelSmall,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                                trailing: Text(
-                                  _hourMinute(item.receivedAt),
-                                  style: Theme.of(context).textTheme.labelSmall,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
             ),
           ),
         ],
@@ -135,6 +140,36 @@ class _NoSearchResults extends StatelessWidget {
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: const Color(0xFF64748B),
             ),
+      ),
+    );
+  }
+}
+
+class _SearchLoading extends StatelessWidget {
+  const _SearchLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      key: ValueKey<String>('search-loading'),
+      child: CircularProgressIndicator(),
+    );
+  }
+}
+
+class _SearchError extends StatelessWidget {
+  const _SearchError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      key: const ValueKey<String>('search-error'),
+      child: Text(
+        message,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.bodyLarge,
       ),
     );
   }
