@@ -15,6 +15,6 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pumpAndSettle();
-    expect(find.text('Sincronizacion'), findsOneWidget);
+    expect(find.text('Cuenta'), findsOneWidget);
   });
 }

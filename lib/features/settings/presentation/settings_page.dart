@@ -9,6 +9,11 @@ class SettingsPage extends StatefulWidget {
     required this.isSyncingNotifications,
     required this.pendingSyncCount,
     required this.canSyncNow,
+    required this.authEmail,
+    required this.isAuthBusy,
+    required this.onSignIn,
+    required this.onSignUp,
+    required this.onSignOut,
     required this.onSyncNow,
     required this.onOpenNotificationSettings,
   });
@@ -18,6 +23,11 @@ class SettingsPage extends StatefulWidget {
   final bool isSyncingNotifications;
   final int pendingSyncCount;
   final bool canSyncNow;
+  final String? authEmail;
+  final bool isAuthBusy;
+  final Future<String?> Function(String email, String password) onSignIn;
+  final Future<String?> Function(String email, String password) onSignUp;
+  final Future<String?> Function() onSignOut;
   final Future<void> Function() onSyncNow;
   final Future<void> Function() onOpenNotificationSettings;
 
@@ -26,9 +36,26 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  late final TextEditingController _emailController;
+  late final TextEditingController _passwordController;
+
   bool _wifiOnlySync = true;
   bool _backgroundSync = true;
   bool _minimalAnimations = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +65,121 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       children: <Widget>[
+        Text(
+          'Cuenta',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        widget.authEmail == null
+                            ? 'Sesion no iniciada'
+                            : 'Sesion activa: ${widget.authEmail}',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: (widget.authEmail == null
+                                ? const Color(0xFFB91C1C)
+                                : const Color(0xFF047857))
+                            .withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        widget.authEmail == null ? 'Sin sesion' : 'Autenticado',
+                        style: TextStyle(
+                          color: widget.authEmail == null
+                              ? const Color(0xFFB91C1C)
+                              : const Color(0xFF047857),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const <String>[AutofillHints.email],
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    hintText: 'tuemail@dominio.com',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  autofillHints: const <String>[AutofillHints.password],
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    hintText: '********',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    FilledButton.icon(
+                      onPressed: widget.supabaseState.initialized && !widget.isAuthBusy
+                          ? () => _handleAuthAction(
+                                () => widget.onSignIn(
+                                  _emailController.text,
+                                  _passwordController.text,
+                                ),
+                                successMessage: 'Sesion iniciada',
+                              )
+                          : null,
+                      icon: _buildAuthButtonIcon(),
+                      label: const Text('Iniciar sesion'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: widget.supabaseState.initialized && !widget.isAuthBusy
+                          ? () => _handleAuthAction(
+                                () => widget.onSignUp(
+                                  _emailController.text,
+                                  _passwordController.text,
+                                ),
+                                successMessage: 'Cuenta creada',
+                              )
+                          : null,
+                      icon: _buildAuthButtonIcon(),
+                      label: const Text('Crear cuenta'),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.supabaseState.initialized &&
+                              !widget.isAuthBusy &&
+                              widget.authEmail != null
+                          ? () => _handleAuthAction(
+                                widget.onSignOut,
+                                successMessage: 'Sesion cerrada',
+                              )
+                          : null,
+                      icon: _buildAuthButtonIcon(),
+                      label: const Text('Cerrar sesion'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
         Text(
           'Permisos Android',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -258,6 +400,37 @@ class _SettingsPageState extends State<SettingsPage> {
       label: 'Pendiente',
       subtitle: 'Estado actual: listener deshabilitado',
       color: Color(0xFFB91C1C),
+    );
+  }
+
+  Widget _buildAuthButtonIcon() {
+    if (widget.isAuthBusy) {
+      return const SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+
+    return const Icon(Icons.lock_open, size: 16);
+  }
+
+  Future<void> _handleAuthAction(
+    Future<String?> Function() action, {
+    required String successMessage,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await action();
+
+    if (!mounted) {
+      return;
+    }
+
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(error ?? successMessage),
+        backgroundColor: error == null ? const Color(0xFF047857) : null,
+      ),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
+import 'package:noty/features/auth/data/supabase_auth_service.dart';
 import 'package:noty/features/feed/data/local_notifications_repository.dart';
 import 'package:noty/features/feed/data/mock_notifications.dart';
 import 'package:noty/features/feed/data/native_notifications_bridge.dart';
@@ -10,6 +11,7 @@ import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
 import 'package:noty/features/search/presentation/search_page.dart';
 import 'package:noty/features/settings/presentation/settings_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotyShell extends StatefulWidget {
   const NotyShell({
@@ -26,15 +28,20 @@ class NotyShell extends StatefulWidget {
 }
 
 class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
+  final SupabaseAuthService _authService = SupabaseAuthService();
   final LocalNotificationsRepository _repository = LocalNotificationsRepository();
   final NativeNotificationsBridge _nativeBridge = NativeNotificationsBridge();
   final SupabaseNotificationsSync _supabaseSync = SupabaseNotificationsSync();
+
+  StreamSubscription<AuthState>? _authSubscription;
 
   int _index = 0;
   bool _isLoadingNotifications = true;
   bool _isNotificationListenerEnabled = false;
   bool _isSyncingNotifications = false;
+  bool _isAuthBusy = false;
   String? _notificationsError;
+  User? _currentUser;
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
   static const List<String> _titles = <String>[
@@ -47,12 +54,31 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    if (widget.supabaseState.initialized) {
+      _currentUser = _authService.currentUser;
+      _authSubscription = _authService.authStateChanges().listen((state) {
+        if (!mounted) {
+          return;
+        }
+
+        setState(() {
+          _currentUser = state.session?.user;
+        });
+
+        if (state.session?.user != null) {
+          unawaited(_syncPendingNotifications());
+        }
+      });
+    }
+
     _loadNotifications();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _authSubscription?.cancel();
     _repository.dispose();
     super.dispose();
   }
@@ -132,6 +158,10 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       return;
     }
 
+    if (_currentUser == null) {
+      return;
+    }
+
     if (!widget.enableLocalPersistence) {
       return;
     }
@@ -183,6 +213,97 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<String?> _signIn(String email, String password) async {
+    if (!widget.supabaseState.initialized) {
+      return 'Supabase no esta inicializado.';
+    }
+
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty || password.isEmpty) {
+      return 'Email y password son obligatorios.';
+    }
+
+    setState(() {
+      _isAuthBusy = true;
+    });
+
+    try {
+      await _authService.signInWithPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+      return null;
+    } on AuthException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'No pudimos iniciar sesion.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAuthBusy = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _signUp(String email, String password) async {
+    if (!widget.supabaseState.initialized) {
+      return 'Supabase no esta inicializado.';
+    }
+
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty || password.isEmpty) {
+      return 'Email y password son obligatorios.';
+    }
+
+    setState(() {
+      _isAuthBusy = true;
+    });
+
+    try {
+      await _authService.signUpWithPassword(
+        email: normalizedEmail,
+        password: password,
+      );
+      return null;
+    } on AuthException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'No pudimos crear la cuenta.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAuthBusy = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _signOut() async {
+    if (!widget.supabaseState.initialized) {
+      return 'Supabase no esta inicializado.';
+    }
+
+    setState(() {
+      _isAuthBusy = true;
+    });
+
+    try {
+      await _authService.signOut();
+      return null;
+    } on AuthException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'No pudimos cerrar sesion.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAuthBusy = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pendingSyncCount =
@@ -205,7 +326,12 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         notificationListenerEnabled: _isNotificationListenerEnabled,
         isSyncingNotifications: _isSyncingNotifications,
         pendingSyncCount: pendingSyncCount,
-        canSyncNow: widget.supabaseState.initialized,
+        canSyncNow: widget.supabaseState.initialized && _currentUser != null,
+        authEmail: _currentUser?.email,
+        isAuthBusy: _isAuthBusy,
+        onSignIn: _signIn,
+        onSignUp: _signUp,
+        onSignOut: _signOut,
         onSyncNow: _syncPendingNotifications,
         onOpenNotificationSettings: () async {
           await _nativeBridge.openNotificationListenerSettings();
