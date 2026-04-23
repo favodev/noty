@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
 import 'package:noty/features/feed/data/local_notifications_repository.dart';
 import 'package:noty/features/feed/data/mock_notifications.dart';
+import 'package:noty/features/feed/data/native_notifications_bridge.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
 import 'package:noty/features/search/presentation/search_page.dart';
@@ -21,11 +22,13 @@ class NotyShell extends StatefulWidget {
   State<NotyShell> createState() => _NotyShellState();
 }
 
-class _NotyShellState extends State<NotyShell> {
+class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   final LocalNotificationsRepository _repository = LocalNotificationsRepository();
+  final NativeNotificationsBridge _nativeBridge = NativeNotificationsBridge();
 
   int _index = 0;
   bool _isLoadingNotifications = true;
+  bool _isNotificationListenerEnabled = false;
   String? _notificationsError;
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
@@ -38,13 +41,22 @@ class _NotyShellState extends State<NotyShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadNotifications();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _repository.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadNotifications();
+    }
   }
 
   Future<void> _loadNotifications() async {
@@ -68,6 +80,13 @@ class _NotyShellState extends State<NotyShell> {
     try {
       await _repository.initialize();
       await _repository.seedIfEmpty(buildMockNotifications());
+
+      final listenerEnabled = await _nativeBridge.isNotificationListenerEnabled();
+      final nativeNotifications = await _nativeBridge.drainPendingNotifications();
+      for (final item in nativeNotifications) {
+        await _repository.upsert(item);
+      }
+
       final notifications = await _repository.getAll();
 
       if (!mounted) {
@@ -77,6 +96,7 @@ class _NotyShellState extends State<NotyShell> {
       setState(() {
         _notifications = notifications;
         _isLoadingNotifications = false;
+        _isNotificationListenerEnabled = listenerEnabled;
       });
     } catch (_) {
       if (!mounted) {
@@ -104,7 +124,13 @@ class _NotyShellState extends State<NotyShell> {
         isLoading: _isLoadingNotifications,
         errorMessage: _notificationsError,
       ),
-      SettingsPage(supabaseState: widget.supabaseState),
+      SettingsPage(
+        supabaseState: widget.supabaseState,
+        notificationListenerEnabled: _isNotificationListenerEnabled,
+        onOpenNotificationSettings: () async {
+          await _nativeBridge.openNotificationListenerSettings();
+        },
+      ),
     ];
 
     return Scaffold(

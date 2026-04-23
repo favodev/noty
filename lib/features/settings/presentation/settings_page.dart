@@ -5,9 +5,13 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({
     super.key,
     required this.supabaseState,
+    required this.notificationListenerEnabled,
+    required this.onOpenNotificationSettings,
   });
 
   final SupabaseBootstrapState supabaseState;
+  final bool notificationListenerEnabled;
+  final Future<void> Function() onOpenNotificationSettings;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -21,10 +25,74 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final status = _buildStatus(widget.supabaseState);
+    final listenerStatus = _buildListenerStatus(widget.notificationListenerEnabled);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       children: <Widget>[
+        Text(
+          'Permisos Android',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+        ),
+        const SizedBox(height: 10),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Acceso a notificaciones',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            listenerStatus.subtitle,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: const Color(0xFF64748B),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: listenerStatus.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        listenerStatus.label,
+                        style: TextStyle(
+                          color: listenerStatus.color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: widget.onOpenNotificationSettings,
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Abrir ajustes de acceso'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
         Text(
           'Sincronizacion',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -146,6 +214,22 @@ class _SettingsPageState extends State<SettingsPage> {
     return const _SupabaseStatusViewModel(
       label: 'Error',
       subtitle: 'Estado actual: fallo en inicializacion',
+      color: Color(0xFFB91C1C),
+    );
+  }
+
+  _SupabaseStatusViewModel _buildListenerStatus(bool isEnabled) {
+    if (isEnabled) {
+      return const _SupabaseStatusViewModel(
+        label: 'Habilitado',
+        subtitle: 'Estado actual: listener activo',
+        color: Color(0xFF047857),
+      );
+    }
+
+    return const _SupabaseStatusViewModel(
+      label: 'Pendiente',
+      subtitle: 'Estado actual: listener deshabilitado',
       color: Color(0xFFB91C1C),
     );
   }
