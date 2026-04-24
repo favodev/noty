@@ -40,6 +40,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   bool _isNotificationListenerEnabled = false;
   bool _isSyncingNotifications = false;
   bool _isAuthBusy = false;
+  bool _isEmailConfirmed = false;
   String? _notificationsError;
   User? _currentUser;
   List<NotificationItem> _notifications = const <NotificationItem>[];
@@ -57,6 +58,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
     if (widget.supabaseState.initialized) {
       _currentUser = _authService.currentUser;
+      _isEmailConfirmed = _authService.isEmailConfirmed;
       _authSubscription = _authService.authStateChanges().listen((state) {
         if (!mounted) {
           return;
@@ -64,6 +66,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
         setState(() {
           _currentUser = state.session?.user;
+          _isEmailConfirmed = _authService.isEmailConfirmed;
         });
 
         if (state.session?.user != null) {
@@ -304,6 +307,36 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<String?> _requestPasswordReset(String email) async {
+    if (!widget.supabaseState.initialized) {
+      return 'Supabase no esta inicializado.';
+    }
+
+    final normalizedEmail = email.trim();
+    if (normalizedEmail.isEmpty) {
+      return 'Ingresa un email valido.';
+    }
+
+    setState(() {
+      _isAuthBusy = true;
+    });
+
+    try {
+      await _authService.sendPasswordResetEmail(email: normalizedEmail);
+      return null;
+    } on AuthException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'No pudimos enviar el email de recuperacion.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAuthBusy = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pendingSyncCount =
@@ -328,10 +361,12 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         pendingSyncCount: pendingSyncCount,
         canSyncNow: widget.supabaseState.initialized && _currentUser != null,
         authEmail: _currentUser?.email,
+        isEmailConfirmed: _isEmailConfirmed,
         isAuthBusy: _isAuthBusy,
         onSignIn: _signIn,
         onSignUp: _signUp,
         onSignOut: _signOut,
+        onRequestPasswordReset: _requestPasswordReset,
         onSyncNow: _syncPendingNotifications,
         onOpenNotificationSettings: () async {
           await _nativeBridge.openNotificationListenerSettings();

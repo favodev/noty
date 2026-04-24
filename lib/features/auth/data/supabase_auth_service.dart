@@ -3,6 +3,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseAuthService {
   User? get currentUser => Supabase.instance.client.auth.currentUser;
 
+  bool get isEmailConfirmed {
+    final user = currentUser;
+    if (user == null) {
+      return false;
+    }
+
+    return user.emailConfirmedAt != null;
+  }
+
   Stream<AuthState> authStateChanges() {
     return Supabase.instance.client.auth.onAuthStateChange;
   }
@@ -29,5 +38,9 @@ class SupabaseAuthService {
 
   Future<void> signOut() async {
     await Supabase.instance.client.auth.signOut();
+  }
+
+  Future<void> sendPasswordResetEmail({required String email}) async {
+    await Supabase.instance.client.auth.resetPasswordForEmail(email);
   }
 }

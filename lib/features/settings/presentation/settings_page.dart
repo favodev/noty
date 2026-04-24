@@ -10,10 +10,12 @@ class SettingsPage extends StatefulWidget {
     required this.pendingSyncCount,
     required this.canSyncNow,
     required this.authEmail,
+    required this.isEmailConfirmed,
     required this.isAuthBusy,
     required this.onSignIn,
     required this.onSignUp,
     required this.onSignOut,
+    required this.onRequestPasswordReset,
     required this.onSyncNow,
     required this.onOpenNotificationSettings,
   });
@@ -24,10 +26,12 @@ class SettingsPage extends StatefulWidget {
   final int pendingSyncCount;
   final bool canSyncNow;
   final String? authEmail;
+  final bool isEmailConfirmed;
   final bool isAuthBusy;
   final Future<String?> Function(String email, String password) onSignIn;
   final Future<String?> Function(String email, String password) onSignUp;
   final Future<String?> Function() onSignOut;
+  final Future<String?> Function(String email) onRequestPasswordReset;
   final Future<void> Function() onSyncNow;
   final Future<void> Function() onOpenNotificationSettings;
 
@@ -84,7 +88,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: Text(
                         widget.authEmail == null
                             ? 'Sesion no iniciada'
-                            : 'Sesion activa: ${widget.authEmail}',
+                            : widget.isEmailConfirmed
+                                ? 'Sesion activa: ${widget.authEmail}'
+                                : 'Sesion activa sin confirmar email: ${widget.authEmail}',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -94,16 +100,24 @@ class _SettingsPageState extends State<SettingsPage> {
                       decoration: BoxDecoration(
                         color: (widget.authEmail == null
                                 ? const Color(0xFFB91C1C)
-                                : const Color(0xFF047857))
+                                : widget.isEmailConfirmed
+                                    ? const Color(0xFF047857)
+                                    : const Color(0xFFB45309))
                             .withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        widget.authEmail == null ? 'Sin sesion' : 'Autenticado',
+                        widget.authEmail == null
+                            ? 'Sin sesion'
+                            : widget.isEmailConfirmed
+                                ? 'Verificado'
+                                : 'No verificado',
                         style: TextStyle(
                           color: widget.authEmail == null
                               ? const Color(0xFFB91C1C)
-                              : const Color(0xFF047857),
+                              : widget.isEmailConfirmed
+                                  ? const Color(0xFF047857)
+                                  : const Color(0xFFB45309),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -172,6 +186,18 @@ class _SettingsPageState extends State<SettingsPage> {
                           : null,
                       icon: _buildAuthButtonIcon(),
                       label: const Text('Cerrar sesion'),
+                    ),
+                    TextButton.icon(
+                      onPressed: widget.supabaseState.initialized && !widget.isAuthBusy
+                          ? () => _handleAuthAction(
+                                () => widget.onRequestPasswordReset(
+                                  _emailController.text,
+                                ),
+                                successMessage: 'Email de recuperacion enviado',
+                              )
+                          : null,
+                      icon: const Icon(Icons.mark_email_read_outlined, size: 16),
+                      label: const Text('Recuperar password'),
                     ),
                   ],
                 ),
