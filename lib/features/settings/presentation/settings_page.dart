@@ -11,11 +11,13 @@ class SettingsPage extends StatefulWidget {
     required this.canSyncNow,
     required this.authEmail,
     required this.isEmailConfirmed,
+    required this.isPasswordRecoveryMode,
     required this.isAuthBusy,
     required this.onSignIn,
     required this.onSignUp,
     required this.onSignOut,
     required this.onRequestPasswordReset,
+    required this.onUpdateRecoveredPassword,
     required this.onSyncNow,
     required this.onOpenNotificationSettings,
   });
@@ -27,11 +29,13 @@ class SettingsPage extends StatefulWidget {
   final bool canSyncNow;
   final String? authEmail;
   final bool isEmailConfirmed;
+  final bool isPasswordRecoveryMode;
   final bool isAuthBusy;
   final Future<String?> Function(String email, String password) onSignIn;
   final Future<String?> Function(String email, String password) onSignUp;
   final Future<String?> Function() onSignOut;
   final Future<String?> Function(String email) onRequestPasswordReset;
+  final Future<String?> Function(String newPassword) onUpdateRecoveredPassword;
   final Future<void> Function() onSyncNow;
   final Future<void> Function() onOpenNotificationSettings;
 
@@ -42,6 +46,7 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _emailController;
   late final TextEditingController _passwordController;
+  late final TextEditingController _recoveryPasswordController;
 
   bool _wifiOnlySync = true;
   bool _backgroundSync = true;
@@ -52,12 +57,14 @@ class _SettingsPageState extends State<SettingsPage> {
     super.initState();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
+    _recoveryPasswordController = TextEditingController();
   }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _recoveryPasswordController.dispose();
     super.dispose();
   }
 
@@ -205,6 +212,55 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ),
+        if (widget.isPasswordRecoveryMode) ...<Widget>[
+          const SizedBox(height: 10),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Recuperacion detectada',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Define una nueva password para completar el recovery.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: const Color(0xFF64748B),
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _recoveryPasswordController,
+                    obscureText: true,
+                    autofillHints: const <String>[AutofillHints.newPassword],
+                    decoration: const InputDecoration(
+                      labelText: 'Nueva password',
+                      hintText: 'Minimo 8 caracteres',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: !widget.isAuthBusy
+                        ? () => _handleAuthAction(
+                              () => widget.onUpdateRecoveredPassword(
+                                _recoveryPasswordController.text,
+                              ),
+                              successMessage: 'Password actualizada',
+                            )
+                        : null,
+                    icon: _buildAuthButtonIcon(),
+                    label: const Text('Actualizar password'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Text(
           'Permisos Android',

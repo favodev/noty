@@ -40,7 +40,19 @@ class SupabaseAuthService {
     await Supabase.instance.client.auth.signOut();
   }
 
-  Future<void> sendPasswordResetEmail({required String email}) async {
-    await Supabase.instance.client.auth.resetPasswordForEmail(email);
+  Future<void> sendPasswordResetEmail({
+    required String email,
+    String? redirectTo,
+  }) async {
+    await Supabase.instance.client.auth.resetPasswordForEmail(
+      email,
+      redirectTo: redirectTo,
+    );
+  }
+
+  Future<void> updatePassword(String password) async {
+    await Supabase.instance.client.auth.updateUser(
+      UserAttributes(password: password),
+    );
   }
 }

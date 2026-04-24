@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:noty/core/config/app_env.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
 import 'package:noty/features/auth/data/supabase_auth_service.dart';
 import 'package:noty/features/feed/data/local_notifications_repository.dart';
@@ -41,6 +42,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   bool _isSyncingNotifications = false;
   bool _isAuthBusy = false;
   bool _isEmailConfirmed = false;
+  bool _isPasswordRecoveryMode = false;
   String? _notificationsError;
   User? _currentUser;
   List<NotificationItem> _notifications = const <NotificationItem>[];
@@ -64,9 +66,17 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
           return;
         }
 
+        final isRecoveryEvent = state.event == AuthChangeEvent.passwordRecovery;
+        final isSignedOutEvent = state.event == AuthChangeEvent.signedOut;
+
         setState(() {
           _currentUser = state.session?.user;
           _isEmailConfirmed = _authService.isEmailConfirmed;
+          if (isRecoveryEvent) {
+            _isPasswordRecoveryMode = true;
+          } else if (isSignedOutEvent) {
+            _isPasswordRecoveryMode = false;
+          }
         });
 
         if (state.session?.user != null) {
@@ -322,12 +332,53 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     });
 
     try {
-      await _authService.sendPasswordResetEmail(email: normalizedEmail);
+      await _authService.sendPasswordResetEmail(
+        email: normalizedEmail,
+        redirectTo: AppEnv.supabaseAuthRedirect,
+      );
       return null;
     } on AuthException catch (error) {
       return error.message;
     } catch (_) {
       return 'No pudimos enviar el email de recuperacion.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isAuthBusy = false;
+        });
+      }
+    }
+  }
+
+  Future<String?> _updateRecoveredPassword(String password) async {
+    if (!widget.supabaseState.initialized) {
+      return 'Supabase no esta inicializado.';
+    }
+
+    if (!_isPasswordRecoveryMode) {
+      return 'No hay recuperacion activa.';
+    }
+
+    if (password.length < 8) {
+      return 'La nueva password debe tener al menos 8 caracteres.';
+    }
+
+    setState(() {
+      _isAuthBusy = true;
+    });
+
+    try {
+      await _authService.updatePassword(password);
+      if (mounted) {
+        setState(() {
+          _isPasswordRecoveryMode = false;
+        });
+      }
+      return null;
+    } on AuthException catch (error) {
+      return error.message;
+    } catch (_) {
+      return 'No pudimos actualizar la password.';
     } finally {
       if (mounted) {
         setState(() {
@@ -362,11 +413,13 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         canSyncNow: widget.supabaseState.initialized && _currentUser != null,
         authEmail: _currentUser?.email,
         isEmailConfirmed: _isEmailConfirmed,
+        isPasswordRecoveryMode: _isPasswordRecoveryMode,
         isAuthBusy: _isAuthBusy,
         onSignIn: _signIn,
         onSignUp: _signUp,
         onSignOut: _signOut,
         onRequestPasswordReset: _requestPasswordReset,
+        onUpdateRecoveredPassword: _updateRecoveredPassword,
         onSyncNow: _syncPendingNotifications,
         onOpenNotificationSettings: () async {
           await _nativeBridge.openNotificationListenerSettings();
