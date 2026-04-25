@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:noty/core/config/app_env.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
 import 'package:noty/features/auth/data/supabase_auth_service.dart';
+import 'package:noty/features/auth/presentation/password_recovery_page.dart';
 import 'package:noty/features/feed/data/local_notifications_repository.dart';
 import 'package:noty/features/feed/data/mock_notifications.dart';
 import 'package:noty/features/feed/data/native_notifications_bridge.dart';
@@ -35,6 +36,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   final SupabaseNotificationsSync _supabaseSync = SupabaseNotificationsSync();
 
   StreamSubscription<AuthState>? _authSubscription;
+  bool _isRecoveryFlowOpen = false;
 
   int _index = 0;
   bool _isLoadingNotifications = true;
@@ -81,6 +83,10 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
         if (state.session?.user != null) {
           unawaited(_syncPendingNotifications());
+        }
+
+        if (isRecoveryEvent) {
+          unawaited(_openPasswordRecoveryFlow());
         }
       });
     }
@@ -386,6 +392,47 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         });
       }
     }
+  }
+
+  Future<void> _openPasswordRecoveryFlow() async {
+    if (!mounted || _isRecoveryFlowOpen) {
+      return;
+    }
+
+    _isRecoveryFlowOpen = true;
+
+    final newPassword = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => const PasswordRecoveryPage(),
+        fullscreenDialog: true,
+      ),
+    );
+
+    if (!mounted) {
+      _isRecoveryFlowOpen = false;
+      return;
+    }
+
+    if (newPassword == null || newPassword.trim().isEmpty) {
+      _isRecoveryFlowOpen = false;
+      return;
+    }
+
+    final result = await _updateRecoveredPassword(newPassword);
+
+    if (!mounted) {
+      _isRecoveryFlowOpen = false;
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result ?? 'Password actualizada'),
+        backgroundColor: result == null ? const Color(0xFF047857) : null,
+      ),
+    );
+
+    _isRecoveryFlowOpen = false;
   }
 
   @override
