@@ -7,12 +7,14 @@ class FeedPage extends StatefulWidget {
     required this.notifications,
     required this.isLoading,
     required this.onRefreshRequested,
+    required this.onSearchRequested,
     this.errorMessage,
   });
 
   final List<NotificationItem> notifications;
   final bool isLoading;
   final Future<void> Function() onRefreshRequested;
+  final Future<void> Function() onSearchRequested;
   final String? errorMessage;
 
   @override

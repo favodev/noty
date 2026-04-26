@@ -41,9 +41,10 @@ object NotificationCaptureStore {
     }
 
     fun isListenerEnabled(context: Context): Boolean {
+        @Suppress("InlinedApi")
         val enabledListeners = Settings.Secure.getString(
             context.contentResolver,
-            Settings.Secure.ENABLED_NOTIFICATION_LISTENERS,
+            "enabled_notification_listeners",
         ) ?: return false
 
         val component = ComponentName(context, NotyNotificationListenerService::class.java)

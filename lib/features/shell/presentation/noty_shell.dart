@@ -51,7 +51,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
   static const List<String> _titles = <String>[
     'Inicio',
-    'Buscar',
     'Ajustes',
   ];
 
@@ -435,6 +434,30 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     _isRecoveryFlowOpen = false;
   }
 
+  Future<void> _openSearch() async {
+    if (!mounted) {
+      return;
+    }
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.9,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SearchPage(
+          notifications: _notifications,
+          isLoading: _isLoadingNotifications,
+          errorMessage: _notificationsError,
+          scrollController: scrollController,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pendingSyncCount =
@@ -446,11 +469,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         isLoading: _isLoadingNotifications,
         errorMessage: _notificationsError,
         onRefreshRequested: _loadNotifications,
-      ),
-      SearchPage(
-        notifications: _notifications,
-        isLoading: _isLoadingNotifications,
-        errorMessage: _notificationsError,
+        onSearchRequested: _openSearch,
       ),
       SettingsPage(
         supabaseState: widget.supabaseState,
@@ -475,7 +494,18 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_index])),
+      appBar: AppBar(
+        title: Text(_titles[_index]),
+        actions: _index == 0
+            ? <Widget>[
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  onPressed: _openSearch,
+                  tooltip: 'Buscar en historial',
+                ),
+              ]
+            : null,
+      ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 220),
         switchInCurve: Curves.easeOutCubic,
@@ -511,11 +541,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
             icon: Icon(Icons.home_outlined),
             selectedIcon: Icon(Icons.home_rounded),
             label: 'Inicio',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search),
-            label: 'Buscar',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),

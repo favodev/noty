@@ -7,11 +7,13 @@ class SearchPage extends StatefulWidget {
     required this.notifications,
     required this.isLoading,
     this.errorMessage,
+    this.scrollController,
   });
 
   final List<NotificationItem> notifications;
   final bool isLoading;
   final String? errorMessage;
+  final ScrollController? scrollController;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -19,6 +21,19 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   String _query = '';
+  late final ScrollController _internalScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _internalScrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _internalScrollController.dispose();
+    super.dispose();
+  }
 
   List<NotificationItem> get _results {
     final filtered = widget.notifications.where((item) => item.matchesQuery(_query)).toList();
@@ -28,78 +43,96 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final scrollController = widget.scrollController ?? _internalScrollController;
     final hasQuery = _query.trim().isNotEmpty;
     final results = _results;
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'Buscar en historial',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
+return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'Buscar en historial',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Filtra por app, titulo o contenido en milisegundos.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF475569),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            onChanged: (value) {
-              setState(() {
-                _query = value;
-              });
-            },
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Ej: eliminado, banco, standup...',
+              ],
             ),
-          ),
-          const SizedBox(height: 14),
-          Expanded(
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 180),
-              switchInCurve: Curves.easeOut,
-              switchOutCurve: Curves.easeIn,
-              child: widget.isLoading
-                  ? const _SearchLoading()
-                  : widget.errorMessage != null
-                      ? _SearchError(message: widget.errorMessage!)
-                      : !hasQuery
-                          ? const _SearchHint()
-                          : results.isEmpty
-                              ? const _NoSearchResults()
-                              : ListView.separated(
-                                  key: ValueKey<String>('results-${results.length}-$_query'),
-                                  itemCount: results.length,
-                                  separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                  itemBuilder: (context, index) {
-                                    final item = results[index];
-                                    return Card(
-                                      child: ListTile(
-                                        title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                                        subtitle: Text(
-                                          '${item.appName} - ${item.body}',
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        trailing: Text(
-                                          _hourMinute(item.receivedAt),
-                                          style: Theme.of(context).textTheme.labelSmall,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
+            const SizedBox(height: 6),
+            Text(
+              'Filtra por app, titulo o contenido en milisegundos.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: const Color(0xFF475569),
+                  ),
             ),
-          ),
-        ],
+            const SizedBox(height: 14),
+            TextField(
+              autofocus: true,
+              onChanged: (value) {
+                setState(() {
+                  _query = value;
+                });
+              },
+              decoration: const InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Ej: eliminado, banco, standup...',
+              ),
+            ),
+            const SizedBox(height: 14),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: widget.isLoading
+                    ? const _SearchLoading()
+                    : widget.errorMessage != null
+                        ? _SearchError(message: widget.errorMessage!)
+                        : !hasQuery
+                            ? const _SearchHint()
+                            : results.isEmpty
+                                ? const _NoSearchResults()
+                                : ListView.separated(
+                                    controller: scrollController,
+                                    key: ValueKey<String>('results-${results.length}-$_query'),
+                                    itemCount: results.length,
+                                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                                    itemBuilder: (context, index) {
+                                      final item = results[index];
+                                      return Card(
+                                        child: ListTile(
+                                          title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                          subtitle: Text(
+                                            '${item.appName} - ${item.body}',
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          trailing: Text(
+                                            _hourMinute(item.receivedAt),
+                                            style: Theme.of(context).textTheme.labelSmall,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
