@@ -20,10 +20,12 @@ class NotyShell extends StatefulWidget {
     super.key,
     required this.supabaseState,
     this.enableLocalPersistence = true,
+    this.onThemeChanged,
   });
 
   final SupabaseBootstrapState supabaseState;
   final bool enableLocalPersistence;
+  final void Function(ThemeMode mode)? onThemeChanged;
 
   @override
   State<NotyShell> createState() => _NotyShellState();

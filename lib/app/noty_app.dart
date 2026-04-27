@@ -3,7 +3,7 @@ import 'package:noty/app/noty_theme.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
 import 'package:noty/features/shell/presentation/noty_shell.dart';
 
-class NotyApp extends StatelessWidget {
+class NotyApp extends StatefulWidget {
   const NotyApp({
     super.key,
     this.supabaseState = const SupabaseBootstrapState.notConfigured(),
@@ -14,14 +14,29 @@ class NotyApp extends StatelessWidget {
   final bool enableLocalPersistence;
 
   @override
+  State<NotyApp> createState() => _NotyAppState();
+}
+
+class _NotyAppState extends State<NotyApp> {
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'NOTY',
       debugShowCheckedModeBanner: false,
-      theme: buildNotyTheme(),
+      theme: buildNotyTheme(Brightness.light),
+      darkTheme: buildNotyTheme(Brightness.dark),
+      themeMode: _themeMode,
       home: NotyShell(
-        supabaseState: supabaseState,
-        enableLocalPersistence: enableLocalPersistence,
+        supabaseState: widget.supabaseState,
+        enableLocalPersistence: widget.enableLocalPersistence,
+        onThemeChanged: (mode) {
+          if (!mounted) return;
+          setState(() {
+            _themeMode = mode;
+          });
+        },
       ),
     );
   }
