@@ -72,16 +72,10 @@ class _FeedPageState extends State<FeedPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Persistencia local lista. Siguiente paso: listener Android y sync con Supabase.',
+            'Todas las notificaciones capturadas por Noty.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: const Color(0xFF475569),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-          ),
-          const SizedBox(height: 6),
-          TextButton.icon(
-            onPressed: widget.isLoading ? null : widget.onRefreshRequested,
-            icon: const Icon(Icons.refresh, size: 18),
-            label: const Text('Recargar historial local'),
           ),
           const SizedBox(height: 14),
           Row(

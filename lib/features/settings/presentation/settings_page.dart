@@ -50,7 +50,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   bool _wifiOnlySync = true;
   bool _backgroundSync = true;
-  bool _minimalAnimations = true;
+  bool _showAuthForm = false;
 
   @override
   void initState() {
@@ -70,378 +70,120 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isAuthenticated = widget.authEmail != null;
     final status = _buildStatus(widget.supabaseState);
-    final listenerStatus = _buildListenerStatus(widget.notificationListenerEnabled);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       children: <Widget>[
-        Text(
-          'Cuenta',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
+        // Sección 1: Cuenta
+        _buildSectionTitle('Cuenta'),
         const SizedBox(height: 10),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        widget.authEmail == null
-                            ? 'Sesion no iniciada'
-                            : widget.isEmailConfirmed
-                                ? 'Sesion activa: ${widget.authEmail}'
-                                : 'Sesion activa sin confirmar email: ${widget.authEmail}',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                    ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: (widget.authEmail == null
-                                ? const Color(0xFFB91C1C)
-                                : widget.isEmailConfirmed
-                                    ? const Color(0xFF047857)
-                                    : const Color(0xFFB45309))
-                            .withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        widget.authEmail == null
-                            ? 'Sin sesion'
-                            : widget.isEmailConfirmed
-                                ? 'Verificado'
-                                : 'No verificado',
-                        style: TextStyle(
-                          color: widget.authEmail == null
-                              ? const Color(0xFFB91C1C)
-                              : widget.isEmailConfirmed
-                                  ? const Color(0xFF047857)
-                                  : const Color(0xFFB45309),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  autofillHints: const <String>[AutofillHints.email],
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'tuemail@dominio.com',
+        _AccountCard(
+          email: widget.authEmail,
+          isEmailConfirmed: widget.isEmailConfirmed,
+          isAuthenticated: isAuthenticated,
+          onSignOut: widget.isAuthBusy || !isAuthenticated
+              ? null
+              : () => _handleAuthAction(
+                    widget.onSignOut,
+                    successMessage: 'Sesion cerrada',
                   ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  autofillHints: const <String>[AutofillHints.password],
-                  decoration: const InputDecoration(
-                    labelText: 'Password',
-                    hintText: '********',
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    FilledButton.icon(
-                      onPressed: widget.supabaseState.initialized && !widget.isAuthBusy
-                          ? () => _handleAuthAction(
-                                () => widget.onSignIn(
-                                  _emailController.text,
-                                  _passwordController.text,
-                                ),
-                                successMessage: 'Sesion iniciada',
-                              )
-                          : null,
-                      icon: _buildAuthButtonIcon(),
-                      label: const Text('Iniciar sesion'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: widget.supabaseState.initialized && !widget.isAuthBusy
-                          ? () => _handleAuthAction(
-                                () => widget.onSignUp(
-                                  _emailController.text,
-                                  _passwordController.text,
-                                ),
-                                successMessage: 'Cuenta creada',
-                              )
-                          : null,
-                      icon: _buildAuthButtonIcon(),
-                      label: const Text('Crear cuenta'),
-                    ),
-                    TextButton.icon(
-                      onPressed: widget.supabaseState.initialized &&
-                              !widget.isAuthBusy &&
-                              widget.authEmail != null
-                          ? () => _handleAuthAction(
-                                widget.onSignOut,
-                                successMessage: 'Sesion cerrada',
-                              )
-                          : null,
-                      icon: _buildAuthButtonIcon(),
-                      label: const Text('Cerrar sesion'),
-                    ),
-                    TextButton.icon(
-                      onPressed: widget.supabaseState.initialized && !widget.isAuthBusy
-                          ? () => _handleAuthAction(
-                                () => widget.onRequestPasswordReset(
-                                  _emailController.text,
-                                ),
-                                successMessage: 'Email de recuperacion enviado',
-                              )
-                          : null,
-                      icon: const Icon(Icons.mark_email_read_outlined, size: 16),
-                      label: const Text('Recuperar password'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ),
-        if (widget.isPasswordRecoveryMode) ...<Widget>[
+
+        // Sección 2: Autenticación (solo si no hay sesión)
+        if (!isAuthenticated) ...<Widget>[
+          const SizedBox(height: 20),
+          _buildSectionTitle('Acceder'),
           const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Recuperacion detectada',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Define una nueva password para completar el recovery.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: const Color(0xFF64748B),
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _recoveryPasswordController,
-                    obscureText: true,
-                    autofillHints: const <String>[AutofillHints.newPassword],
-                    decoration: const InputDecoration(
-                      labelText: 'Nueva password',
-                      hintText: 'Minimo 8 caracteres',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  FilledButton.icon(
-                    onPressed: !widget.isAuthBusy
-                        ? () => _handleAuthAction(
-                              () => widget.onUpdateRecoveredPassword(
-                                _recoveryPasswordController.text,
-                              ),
-                              successMessage: 'Password actualizada',
-                            )
-                        : null,
-                    icon: _buildAuthButtonIcon(),
-                    label: const Text('Actualizar password'),
-                  ),
-                ],
+          _AuthFormCard(
+            supabaseInitialized: widget.supabaseState.initialized,
+            isAuthBusy: widget.isAuthBusy,
+            showForm: _showAuthForm,
+            onToggleForm: () {
+              setState(() {
+                _showAuthForm = !_showAuthForm;
+              });
+            },
+            emailController: _emailController,
+            passwordController: _passwordController,
+            onSignIn: () => _handleAuthAction(
+              () => widget.onSignIn(
+                _emailController.text,
+                _passwordController.text,
               ),
+              successMessage: 'Sesion iniciada',
+            ),
+            onSignUp: () => _handleAuthAction(
+              () => widget.onSignUp(
+                _emailController.text,
+                _passwordController.text,
+              ),
+              successMessage: 'Cuenta creada',
+            ),
+            onRequestPasswordReset: () => _handleAuthAction(
+              () => widget.onRequestPasswordReset(_emailController.text),
+              successMessage: 'Email de recuperacion enviado',
             ),
           ),
         ],
-        const SizedBox(height: 20),
-        Text(
-          'Permisos Android',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
+
+        // Sección 3: Recuperación de password
+        if (widget.isPasswordRecoveryMode) ...<Widget>[
+          const SizedBox(height: 20),
+          _buildSectionTitle('Recuperar password'),
+          const SizedBox(height: 10),
+          _PasswordRecoveryCard(
+            isAuthBusy: widget.isAuthBusy,
+            controller: _recoveryPasswordController,
+            onUpdatePassword: () => _handleAuthAction(
+              () => widget.onUpdateRecoveredPassword(
+                _recoveryPasswordController.text,
               ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            'Acceso a notificaciones',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            listenerStatus.subtitle,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: const Color(0xFF64748B),
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: listenerStatus.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        listenerStatus.label,
-                        style: TextStyle(
-                          color: listenerStatus.color,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  onPressed: widget.onOpenNotificationSettings,
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Abrir ajustes de acceso'),
-                ),
-              ],
+              successMessage: 'Password actualizada',
             ),
           ),
-        ),
+        ],
+
+        // Sección 4: Permisos Android
         const SizedBox(height: 20),
-        Text(
-          'Sincronizacion',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
+        _buildSectionTitle('Acceso a notificaciones'),
         const SizedBox(height: 10),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Supabase',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${status.subtitle} · Pendientes: ${widget.pendingSyncCount}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: const Color(0xFF64748B),
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: status.color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    status.label,
-                    style: TextStyle(
-                      color: status.color,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        _NotificationPermissionCard(
+          isEnabled: widget.notificationListenerEnabled,
+          onOpenSettings: widget.onOpenNotificationSettings,
         ),
-        const SizedBox(height: 10),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton.icon(
-            onPressed: widget.canSyncNow && !widget.isSyncingNotifications
-                ? widget.onSyncNow
-                : null,
-            icon: widget.isSyncingNotifications
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.cloud_upload_outlined),
-            label: Text(
-              widget.isSyncingNotifications ? 'Sincronizando...' : 'Sincronizar ahora',
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: <Widget>[
-              SwitchListTile(
-                value: _wifiOnlySync,
-                onChanged: (value) {
-                  setState(() {
-                    _wifiOnlySync = value;
-                  });
-                },
-                title: const Text('Solo sincronizar en Wi-Fi'),
-              ),
-              const Divider(height: 1),
-              SwitchListTile(
-                value: _backgroundSync,
-                onChanged: (value) {
-                  setState(() {
-                    _backgroundSync = value;
-                  });
-                },
-                title: const Text('Sync en background'),
-              ),
-            ],
-          ),
-        ),
+
+        // Sección 5: Sincronización
         const SizedBox(height: 20),
-        Text(
-          'Animaciones',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-        ),
+        _buildSectionTitle('Sincronizacion'),
         const SizedBox(height: 10),
-        Card(
-          child: SwitchListTile(
-            value: _minimalAnimations,
-            onChanged: (value) {
-              setState(() {
-                _minimalAnimations = value;
-              });
-            },
-            title: const Text('Animaciones minimalistas'),
-            subtitle: const Text('Transiciones cortas para fluidez y bajo costo.'),
-          ),
+        _SyncCard(
+          status: status,
+          pendingCount: widget.pendingSyncCount,
+          canSyncNow: widget.canSyncNow,
+          isSyncing: widget.isSyncingNotifications,
+          onSyncNow: widget.onSyncNow,
+        ),
+
+        // Sección 6: Opciones de sync
+        const SizedBox(height: 10),
+        _SyncOptionsCard(
+          wifiOnly: _wifiOnlySync,
+          backgroundSync: _backgroundSync,
+          onWifiOnlyChanged: (value) => setState(() => _wifiOnlySync = value),
+          onBackgroundSyncChanged: (value) => setState(() => _backgroundSync = value),
         ),
       ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
     );
   }
 
@@ -449,52 +191,22 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!state.configured) {
       return const _SupabaseStatusViewModel(
         label: 'Pendiente',
-        subtitle: 'Estado actual: sin configurar',
-        color: Color(0xFFB91C1C),
+        subtitle: 'Sin configurar',
+        color: Colors.orange,
       );
     }
-
     if (state.initialized) {
       return const _SupabaseStatusViewModel(
         label: 'Conectado',
-        subtitle: 'Estado actual: inicializado correctamente',
-        color: Color(0xFF047857),
+        subtitle: 'Inicializado',
+        color: Colors.green,
       );
     }
-
     return const _SupabaseStatusViewModel(
       label: 'Error',
-      subtitle: 'Estado actual: fallo en inicializacion',
-      color: Color(0xFFB91C1C),
+      subtitle: 'Fallo',
+      color: Colors.red,
     );
-  }
-
-  _SupabaseStatusViewModel _buildListenerStatus(bool isEnabled) {
-    if (isEnabled) {
-      return const _SupabaseStatusViewModel(
-        label: 'Habilitado',
-        subtitle: 'Estado actual: listener activo',
-        color: Color(0xFF047857),
-      );
-    }
-
-    return const _SupabaseStatusViewModel(
-      label: 'Pendiente',
-      subtitle: 'Estado actual: listener deshabilitado',
-      color: Color(0xFFB91C1C),
-    );
-  }
-
-  Widget _buildAuthButtonIcon() {
-    if (widget.isAuthBusy) {
-      return const SizedBox(
-        width: 14,
-        height: 14,
-        child: CircularProgressIndicator(strokeWidth: 2),
-      );
-    }
-
-    return const Icon(Icons.lock_open, size: 16);
   }
 
   Future<void> _handleAuthAction(
@@ -503,28 +215,445 @@ class _SettingsPageState extends State<SettingsPage> {
   }) async {
     final messenger = ScaffoldMessenger.of(context);
     final error = await action();
-
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
         content: Text(error ?? successMessage),
-        backgroundColor: error == null ? const Color(0xFF047857) : null,
+        backgroundColor: error == null ? Colors.green : null,
       ),
     );
   }
 }
 
+// View Models
 class _SupabaseStatusViewModel {
   const _SupabaseStatusViewModel({
     required this.label,
     required this.subtitle,
     required this.color,
   });
-
   final String label;
   final String subtitle;
   final Color color;
+}
+
+// Widgets
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+    );
+  }
+}
+
+class _AccountCard extends StatelessWidget {
+  const _AccountCard({
+    required this.email,
+    required this.isEmailConfirmed,
+    required this.isAuthenticated,
+    required this.onSignOut,
+  });
+
+  final String? email;
+  final bool isEmailConfirmed;
+  final bool isAuthenticated;
+  final VoidCallback? onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  isAuthenticated ? Icons.check_circle : Icons.cancel,
+                  color: isAuthenticated ? Colors.green : Colors.red,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isAuthenticated
+                        ? (email ?? 'Sin email')
+                        : 'Sin sesion',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+                _StatusBadge(
+                  label: isAuthenticated
+                      ? (isEmailConfirmed ? 'Verificado' : 'Sin verificar')
+                      : 'Desconectado',
+                  color: isAuthenticated
+                      ? (isEmailConfirmed ? Colors.green : Colors.orange)
+                      : Colors.red,
+                ),
+              ],
+            ),
+            if (isAuthenticated) ...<Widget>[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: onSignOut,
+                  child: const Text('Cerrar sesion'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthFormCard extends StatelessWidget {
+  const _AuthFormCard({
+    required this.supabaseInitialized,
+    required this.isAuthBusy,
+    required this.showForm,
+    required this.onToggleForm,
+    required this.emailController,
+    required this.passwordController,
+    required this.onSignIn,
+    required this.onSignUp,
+    required this.onRequestPasswordReset,
+  });
+
+  final bool supabaseInitialized;
+  final bool isAuthBusy;
+  final bool showForm;
+  final VoidCallback onToggleForm;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final VoidCallback onSignIn;
+  final VoidCallback onSignUp;
+  final VoidCallback onRequestPasswordReset;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            if (!showForm) ...<Widget>[
+              Text(
+                'Inicia sesion o crea una cuenta para sincronizar tus notificaciones.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: supabaseInitialized ? onToggleForm : null,
+                  child: const Text('Acceder'),
+                ),
+              ),
+            ] else ...<Widget>[
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'tu@email.com',
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Password',
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: isAuthBusy ? null : onSignIn,
+                      child: const Text('Iniciar sesion'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: isAuthBusy ? null : onSignUp,
+                      child: const Text('Crear cuenta'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: isAuthBusy ? null : onRequestPasswordReset,
+                  child: const Text('Olvide mi password'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton(
+                  onPressed: onToggleForm,
+                  child: const Text('Cerrar'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PasswordRecoveryCard extends StatelessWidget {
+  const _PasswordRecoveryCard({
+    required this.isAuthBusy,
+    required this.controller,
+    required this.onUpdatePassword,
+  });
+
+  final bool isAuthBusy;
+  final TextEditingController controller;
+  final VoidCallback onUpdatePassword;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Recuperacion de password',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Ingresa tu nueva password (minimo 8 caracteres).',
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: controller,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Nueva password',
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: isAuthBusy ? null : onUpdatePassword,
+                child: const Text('Actualizar password'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationPermissionCard extends StatelessWidget {
+  const _NotificationPermissionCard({
+    required this.isEnabled,
+    required this.onOpenSettings,
+  });
+
+  final bool isEnabled;
+  final VoidCallback onOpenSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  isEnabled ? Icons.check_circle : Icons.warning,
+                  color: isEnabled ? Colors.green : Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isEnabled
+                        ? 'Notificaciones capturadas'
+                        : 'Sin acceso a notificaciones',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                _StatusBadge(
+                  label: isEnabled ? 'Activo' : 'Inactivo',
+                  color: isEnabled ? Colors.green : Colors.orange,
+                ),
+              ],
+            ),
+            if (!isEnabled) ...<Widget>[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onOpenSettings,
+                  child: const Text('Habilitar acceso'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SyncCard extends StatelessWidget {
+  const _SyncCard({
+    required this.status,
+    required this.pendingCount,
+    required this.canSyncNow,
+    required this.isSyncing,
+    required this.onSyncNow,
+  });
+
+  final _SupabaseStatusViewModel status;
+  final int pendingCount;
+  final bool canSyncNow;
+  final bool isSyncing;
+  final VoidCallback onSyncNow;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              status.label == 'Conectado' ? Icons.cloud_done : Icons.cloud_off,
+              color: status.color,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Supabase',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '${status.subtitle} · $pendingCount pendiente${pendingCount == 1 ? '' : 's'}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            _StatusBadge(
+              label: status.label,
+              color: status.color,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SyncOptionsCard extends StatelessWidget {
+  const _SyncOptionsCard({
+    required this.wifiOnly,
+    required this.backgroundSync,
+    required this.onWifiOnlyChanged,
+    required this.onBackgroundSyncChanged,
+  });
+
+  final bool wifiOnly;
+  final bool backgroundSync;
+  final ValueChanged<bool> onWifiOnlyChanged;
+  final ValueChanged<bool> onBackgroundSyncChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        children: <Widget>[
+          SwitchListTile(
+            value: wifiOnly,
+            onChanged: onWifiOnlyChanged,
+            title: const Text('Solo con Wi-Fi'),
+            subtitle: const Text('Ahorro de datos moviles'),
+          ),
+          const Divider(height: 1),
+          SwitchListTile(
+            value: backgroundSync,
+            onChanged: onBackgroundSyncChanged,
+            title: const Text('Sincronizacion en background'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
 }
