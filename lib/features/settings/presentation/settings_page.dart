@@ -238,21 +238,6 @@ class _SupabaseStatusViewModel {
 }
 
 // Widgets
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.title);
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
-    );
-  }
-}
-
 class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.email,
@@ -557,34 +542,54 @@ class _SyncCard extends StatelessWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(
-              status.label == 'Conectado' ? Icons.cloud_done : Icons.cloud_off,
-              color: status.color,
-              size: 20,
+            Row(
+              children: <Widget>[
+                Icon(
+                  status.label == 'Conectado' ? Icons.cloud_done : Icons.cloud_off,
+                  color: status.color,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Supabase',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        '${status.subtitle} · $pendingCount pendiente${pendingCount == 1 ? '' : 's'}',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                _StatusBadge(
+                  label: status.label,
+                  color: status.color,
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'Supabase',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${status.subtitle} · $pendingCount pendiente${pendingCount == 1 ? '' : 's'}',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: canSyncNow && !isSyncing ? onSyncNow : null,
+                icon: isSyncing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync),
+                label: Text(isSyncing ? 'Sincronizando...' : 'Sincronizar ahora'),
               ),
-            ),
-            _StatusBadge(
-              label: status.label,
-              color: status.color,
             ),
           ],
         ),
