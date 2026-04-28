@@ -2,16 +2,22 @@ import 'package:flutter/material.dart';
 
 ThemeData buildNotyTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
+  const seedColor = Color(0xFF8B5CF6);
+  const accentColor = Color(0xFFD8B4FE);
   final colorScheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF0B6BFD),
+    seedColor: seedColor,
     brightness: brightness,
   );
 
-  final surfaceColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF4F6FB);
-  final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-  final cardBorder = isDark ? const Color(0xFF334155) : const Color(0xFFE5E7EB);
-  final inputFill = isDark ? const Color(0xFF1E293B) : Colors.white;
-  final inputBorder = isDark ? const Color(0xFF475569) : const Color(0xFFD1D5DB);
+  final surfaceColor = isDark ? const Color(0xFF090611) : const Color(0xFFF6F1FF);
+  final cardColor = isDark ? const Color(0xFF140B27) : const Color(0xFFFFFBFF);
+  final cardBorder = isDark ? const Color(0xFF31214A) : const Color(0xFFE7D9FF);
+  final inputFill = isDark ? const Color(0xFF1A1031) : const Color(0xFFFCF8FF);
+  final inputBorder = isDark ? const Color(0xFF4C3573) : const Color(0xFFD5C2F5);
+  final appBarForeground = isDark ? const Color(0xFFF5EDFF) : const Color(0xFF221238);
+  final bodyPrimary = isDark ? const Color(0xFFF3E8FF) : const Color(0xFF221238);
+  final bodySecondary = isDark ? const Color(0xFFCBB8EA) : const Color(0xFF5B4B79);
+  final labelColor = isDark ? const Color(0xFFB9A4DB) : const Color(0xFF6C5A8D);
 
   return ThemeData(
     useMaterial3: true,
@@ -21,7 +27,7 @@ ThemeData buildNotyTheme(Brightness brightness) {
     appBarTheme: AppBarTheme(
       elevation: 0,
       backgroundColor: surfaceColor,
-      foregroundColor: isDark ? Colors.white : const Color(0xFF0F172A),
+      foregroundColor: appBarForeground,
       centerTitle: false,
     ),
     cardTheme: CardThemeData(
@@ -37,7 +43,7 @@ ThemeData buildNotyTheme(Brightness brightness) {
       elevation: 0,
       labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
       backgroundColor: cardColor,
-      indicatorColor: colorScheme.primary.withValues(alpha: 0.14),
+      indicatorColor: accentColor.withValues(alpha: isDark ? 0.24 : 0.32),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
@@ -57,11 +63,11 @@ ThemeData buildNotyTheme(Brightness brightness) {
       ),
     ),
     textTheme: TextTheme(
-      bodyLarge: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A)),
-      bodyMedium: TextStyle(color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF475569)),
-      titleLarge: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A)),
-      titleMedium: TextStyle(color: isDark ? Colors.white : const Color(0xFF0F172A)),
-      labelMedium: TextStyle(color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+      bodyLarge: TextStyle(color: bodyPrimary),
+      bodyMedium: TextStyle(color: bodySecondary),
+      titleLarge: TextStyle(color: bodyPrimary),
+      titleMedium: TextStyle(color: bodyPrimary),
+      labelMedium: TextStyle(color: labelColor),
     ),
   );
 }

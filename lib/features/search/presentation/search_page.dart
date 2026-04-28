@@ -46,11 +46,12 @@ class _SearchPageState extends State<SearchPage> {
     final scrollController = widget.scrollController ?? _internalScrollController;
     final hasQuery = _query.trim().isNotEmpty;
     final results = _results;
+    final colorScheme = Theme.of(context).colorScheme;
 
-return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),

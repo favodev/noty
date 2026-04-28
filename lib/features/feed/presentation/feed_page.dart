@@ -158,7 +158,11 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelColor = item.isUnread ? const Color(0xFF0B6BFD) : const Color(0xFF64748B);
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelColor = item.isUnread ? colorScheme.primary : colorScheme.onSurfaceVariant;
+    final iconBackground = item.isUnread
+        ? colorScheme.primaryContainer.withValues(alpha: 0.72)
+        : colorScheme.surfaceContainerHighest;
 
     return Card(
       child: Padding(
@@ -170,7 +174,7 @@ class _NotificationCard extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: const Color(0xFFEEF2FF),
+                color: iconBackground,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.notifications_active_outlined, size: 20),
@@ -227,7 +231,7 @@ class _NotificationCard extends StatelessWidget {
                       ),
                       if (item.isUnread) ...<Widget>[
                         const SizedBox(width: 8),
-                        const Icon(Icons.circle, size: 8, color: Color(0xFF0B6BFD)),
+                        Icon(Icons.circle, size: 8, color: colorScheme.primary),
                       ],
                     ],
                   ),

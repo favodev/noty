@@ -18,7 +18,7 @@ class NotyApp extends StatefulWidget {
 }
 
 class _NotyAppState extends State<NotyApp> {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   @override
   Widget build(BuildContext context) {
