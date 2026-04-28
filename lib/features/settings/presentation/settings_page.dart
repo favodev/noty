@@ -160,12 +160,13 @@ class _SettingsPageState extends State<SettingsPage> {
     required String successMessage,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
+    final colorScheme = Theme.of(context).colorScheme;
     final error = await action();
     if (!mounted) return;
     messenger.showSnackBar(
       SnackBar(
         content: Text(error ?? successMessage),
-        backgroundColor: error == null ? Colors.green : null,
+        backgroundColor: error == null ? colorScheme.primary : null,
       ),
     );
   }
@@ -188,6 +189,11 @@ class _AccountCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final statusColor = isAuthenticated ? colorScheme.primary : colorScheme.error;
+    final badgeColor = isAuthenticated
+        ? (isEmailConfirmed ? colorScheme.primary : colorScheme.tertiary)
+        : colorScheme.error;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -198,7 +204,7 @@ class _AccountCard extends StatelessWidget {
               children: <Widget>[
                 Icon(
                   isAuthenticated ? Icons.check_circle : Icons.cancel,
-                  color: isAuthenticated ? Colors.green : Colors.red,
+                  color: statusColor,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -214,9 +220,7 @@ class _AccountCard extends StatelessWidget {
                   label: isAuthenticated
                       ? (isEmailConfirmed ? 'Verificado' : 'Sin verificar')
                       : 'Desconectado',
-                  color: isAuthenticated
-                      ? (isEmailConfirmed ? Colors.green : Colors.orange)
-                      : Colors.red,
+                  color: badgeColor,
                 ),
               ],
             ),
@@ -408,6 +412,8 @@ class _NotificationPermissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final statusColor = isEnabled ? colorScheme.primary : colorScheme.tertiary;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -418,7 +424,7 @@ class _NotificationPermissionCard extends StatelessWidget {
               children: <Widget>[
                 Icon(
                   isEnabled ? Icons.check_circle : Icons.warning,
-                  color: isEnabled ? Colors.green : Colors.orange,
+                  color: statusColor,
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -434,7 +440,7 @@ class _NotificationPermissionCard extends StatelessWidget {
                 ),
                 _StatusBadge(
                   label: isEnabled ? 'Activo' : 'Inactivo',
-                  color: isEnabled ? Colors.green : Colors.orange,
+                  color: statusColor,
                 ),
               ],
             ),

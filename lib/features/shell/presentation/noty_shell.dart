@@ -426,10 +426,11 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       return;
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(result ?? 'Password actualizada'),
-        backgroundColor: result == null ? const Color(0xFF047857) : null,
+        backgroundColor: result == null ? colorScheme.primary : null,
       ),
     );
 

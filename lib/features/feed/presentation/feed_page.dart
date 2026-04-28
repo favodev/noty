@@ -200,7 +200,7 @@ class _NotificationCard extends StatelessWidget {
                       Text(
                         _formatRelativeTime(item.receivedAt),
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              color: const Color(0xFF64748B),
+                              color: colorScheme.onSurfaceVariant,
                             ),
                       ),
                     ],
@@ -271,7 +271,7 @@ class _EmptyFeed extends StatelessWidget {
       child: Text(
         'No hay notificaciones para ese filtro.',
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: const Color(0xFF64748B),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
       ),
     );

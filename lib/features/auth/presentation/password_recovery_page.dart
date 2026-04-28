@@ -31,6 +31,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Recuperar password')),
       body: SafeArea(
@@ -92,7 +93,7 @@ class _PasswordRecoveryPageState extends State<PasswordRecoveryPage> {
                         padding: const EdgeInsets.only(top: 10),
                         child: Text(
                           _errorText!,
-                          style: const TextStyle(color: Color(0xFFB91C1C)),
+                          style: TextStyle(color: colorScheme.error),
                         ),
                       ),
               ),

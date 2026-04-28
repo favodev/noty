@@ -77,7 +77,7 @@ class _SearchPageState extends State<SearchPage> {
             Text(
               'Filtra por app, titulo o contenido en milisegundos.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: const Color(0xFF475569),
+                    color: colorScheme.onSurfaceVariant,
                   ),
             ),
             const SizedBox(height: 14),
@@ -155,7 +155,7 @@ class _SearchHint extends StatelessWidget {
       child: Text(
         'Escribe para empezar a buscar.',
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: const Color(0xFF64748B),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
       ),
     );
@@ -172,7 +172,7 @@ class _NoSearchResults extends StatelessWidget {
       child: Text(
         'No encontramos coincidencias.',
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: const Color(0xFF64748B),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
       ),
     );
