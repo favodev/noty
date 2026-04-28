@@ -172,9 +172,9 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final labelColor = item.isUnread ? colorScheme.primary : colorScheme.onSurfaceVariant;
+    final labelColor = item.isUnread ? colorScheme.tertiary : colorScheme.onSurfaceVariant;
     final iconBackground = item.isUnread
-        ? colorScheme.primaryContainer.withValues(alpha: 0.72)
+        ? colorScheme.tertiaryContainer
         : colorScheme.surfaceContainerHighest;
 
     return Card(
@@ -244,7 +244,7 @@ class _NotificationCard extends StatelessWidget {
                       ),
                       if (item.isUnread) ...<Widget>[
                         const SizedBox(width: 8),
-                        Icon(Icons.circle, size: 8, color: colorScheme.primary),
+                        Icon(Icons.circle, size: 8, color: colorScheme.tertiary),
                       ],
                     ],
                   ),
