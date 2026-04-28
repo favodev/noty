@@ -462,9 +462,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final pendingSyncCount =
-        _notifications.where((item) => item.needsSync).length;
-
     final tabs = <Widget>[
       FeedPage(
         notifications: _notifications,
@@ -476,9 +473,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       SettingsPage(
         supabaseState: widget.supabaseState,
         notificationListenerEnabled: _isNotificationListenerEnabled,
-        isSyncingNotifications: _isSyncingNotifications,
-        pendingSyncCount: pendingSyncCount,
-        canSyncNow: widget.supabaseState.initialized && _currentUser != null,
         authEmail: _currentUser?.email,
         isEmailConfirmed: _isEmailConfirmed,
         isPasswordRecoveryMode: _isPasswordRecoveryMode,
@@ -488,7 +482,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         onSignOut: _signOut,
         onRequestPasswordReset: _requestPasswordReset,
         onUpdateRecoveredPassword: _updateRecoveredPassword,
-        onSyncNow: _syncPendingNotifications,
         onOpenNotificationSettings: () async {
           await _nativeBridge.openNotificationListenerSettings();
         },

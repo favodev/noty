@@ -6,9 +6,6 @@ class SettingsPage extends StatefulWidget {
     super.key,
     required this.supabaseState,
     required this.notificationListenerEnabled,
-    required this.isSyncingNotifications,
-    required this.pendingSyncCount,
-    required this.canSyncNow,
     required this.authEmail,
     required this.isEmailConfirmed,
     required this.isPasswordRecoveryMode,
@@ -18,15 +15,11 @@ class SettingsPage extends StatefulWidget {
     required this.onSignOut,
     required this.onRequestPasswordReset,
     required this.onUpdateRecoveredPassword,
-    required this.onSyncNow,
     required this.onOpenNotificationSettings,
   });
 
   final SupabaseBootstrapState supabaseState;
   final bool notificationListenerEnabled;
-  final bool isSyncingNotifications;
-  final int pendingSyncCount;
-  final bool canSyncNow;
   final String? authEmail;
   final bool isEmailConfirmed;
   final bool isPasswordRecoveryMode;
@@ -36,7 +29,6 @@ class SettingsPage extends StatefulWidget {
   final Future<String?> Function() onSignOut;
   final Future<String?> Function(String email) onRequestPasswordReset;
   final Future<String?> Function(String newPassword) onUpdateRecoveredPassword;
-  final Future<void> Function() onSyncNow;
   final Future<void> Function() onOpenNotificationSettings;
 
   @override
@@ -48,8 +40,6 @@ class _SettingsPageState extends State<SettingsPage> {
   late final TextEditingController _passwordController;
   late final TextEditingController _recoveryPasswordController;
 
-  bool _wifiOnlySync = true;
-  bool _backgroundSync = true;
   bool _showAuthForm = false;
 
   @override
@@ -71,8 +61,6 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = widget.authEmail != null;
-    final status = _buildStatus(widget.supabaseState);
-
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       children: <Widget>[
@@ -154,26 +142,6 @@ class _SettingsPageState extends State<SettingsPage> {
           onOpenSettings: widget.onOpenNotificationSettings,
         ),
 
-        // Sección 5: Sincronización
-        const SizedBox(height: 20),
-        _buildSectionTitle('Sincronizacion'),
-        const SizedBox(height: 10),
-        _SyncCard(
-          status: status,
-          pendingCount: widget.pendingSyncCount,
-          canSyncNow: widget.canSyncNow,
-          isSyncing: widget.isSyncingNotifications,
-          onSyncNow: widget.onSyncNow,
-        ),
-
-        // Sección 6: Opciones de sync
-        const SizedBox(height: 10),
-        _SyncOptionsCard(
-          wifiOnly: _wifiOnlySync,
-          backgroundSync: _backgroundSync,
-          onWifiOnlyChanged: (value) => setState(() => _wifiOnlySync = value),
-          onBackgroundSyncChanged: (value) => setState(() => _backgroundSync = value),
-        ),
       ],
     );
   }
@@ -184,28 +152,6 @@ class _SettingsPageState extends State<SettingsPage> {
       style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),
-    );
-  }
-
-  _SupabaseStatusViewModel _buildStatus(SupabaseBootstrapState state) {
-    if (!state.configured) {
-      return const _SupabaseStatusViewModel(
-        label: 'Pendiente',
-        subtitle: 'Sin configurar',
-        color: Colors.orange,
-      );
-    }
-    if (state.initialized) {
-      return const _SupabaseStatusViewModel(
-        label: 'Conectado',
-        subtitle: 'Inicializado',
-        color: Colors.green,
-      );
-    }
-    return const _SupabaseStatusViewModel(
-      label: 'Error',
-      subtitle: 'Fallo',
-      color: Colors.red,
     );
   }
 
@@ -223,18 +169,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-}
-
-// View Models
-class _SupabaseStatusViewModel {
-  const _SupabaseStatusViewModel({
-    required this.label,
-    required this.subtitle,
-    required this.color,
-  });
-  final String label;
-  final String subtitle;
-  final Color color;
 }
 
 // Widgets
@@ -516,119 +450,6 @@ class _NotificationPermissionCard extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _SyncCard extends StatelessWidget {
-  const _SyncCard({
-    required this.status,
-    required this.pendingCount,
-    required this.canSyncNow,
-    required this.isSyncing,
-    required this.onSyncNow,
-  });
-
-  final _SupabaseStatusViewModel status;
-  final int pendingCount;
-  final bool canSyncNow;
-  final bool isSyncing;
-  final VoidCallback onSyncNow;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(
-                  status.label == 'Conectado' ? Icons.cloud_done : Icons.cloud_off,
-                  color: status.color,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        'Supabase',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        '${status.subtitle} · $pendingCount pendiente${pendingCount == 1 ? '' : 's'}',
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-                _StatusBadge(
-                  label: status.label,
-                  color: status.color,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: canSyncNow && !isSyncing ? onSyncNow : null,
-                icon: isSyncing
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.sync),
-                label: Text(isSyncing ? 'Sincronizando...' : 'Sincronizar ahora'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SyncOptionsCard extends StatelessWidget {
-  const _SyncOptionsCard({
-    required this.wifiOnly,
-    required this.backgroundSync,
-    required this.onWifiOnlyChanged,
-    required this.onBackgroundSyncChanged,
-  });
-
-  final bool wifiOnly;
-  final bool backgroundSync;
-  final ValueChanged<bool> onWifiOnlyChanged;
-  final ValueChanged<bool> onBackgroundSyncChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Column(
-        children: <Widget>[
-          SwitchListTile(
-            value: wifiOnly,
-            onChanged: onWifiOnlyChanged,
-            title: const Text('Solo con Wi-Fi'),
-            subtitle: const Text('Ahorro de datos moviles'),
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            value: backgroundSync,
-            onChanged: onBackgroundSyncChanged,
-            title: const Text('Sincronizacion en background'),
-          ),
-        ],
       ),
     );
   }
