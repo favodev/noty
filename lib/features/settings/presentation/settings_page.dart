@@ -5,6 +5,7 @@ class SettingsPage extends StatefulWidget {
   const SettingsPage({
     super.key,
     required this.supabaseState,
+    required this.currentThemeMode,
     required this.notificationListenerEnabled,
     required this.authEmail,
     required this.isEmailConfirmed,
@@ -16,9 +17,11 @@ class SettingsPage extends StatefulWidget {
     required this.onRequestPasswordReset,
     required this.onUpdateRecoveredPassword,
     required this.onOpenNotificationSettings,
+    this.onThemeModeChanged,
   });
 
   final SupabaseBootstrapState supabaseState;
+  final ThemeMode currentThemeMode;
   final bool notificationListenerEnabled;
   final String? authEmail;
   final bool isEmailConfirmed;
@@ -30,6 +33,7 @@ class SettingsPage extends StatefulWidget {
   final Future<String?> Function(String email) onRequestPasswordReset;
   final Future<String?> Function(String newPassword) onUpdateRecoveredPassword;
   final Future<void> Function() onOpenNotificationSettings;
+  final void Function(ThemeMode mode)? onThemeModeChanged;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -135,6 +139,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
         // Sección 4: Permisos Android
         const SizedBox(height: 20),
+        _buildSectionTitle('Apariencia'),
+        const SizedBox(height: 10),
+        _ThemeModeCard(
+          currentThemeMode: widget.currentThemeMode,
+          onThemeModeChanged: widget.onThemeModeChanged,
+        ),
+        const SizedBox(height: 20),
         _buildSectionTitle('Acceso a notificaciones'),
         const SizedBox(height: 10),
         _NotificationPermissionCard(
@@ -173,6 +184,64 @@ class _SettingsPageState extends State<SettingsPage> {
 }
 
 // Widgets
+class _ThemeModeCard extends StatelessWidget {
+  const _ThemeModeCard({
+    required this.currentThemeMode,
+    required this.onThemeModeChanged,
+  });
+
+  final ThemeMode currentThemeMode;
+  final void Function(ThemeMode mode)? onThemeModeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Elegí cómo querés ver Noty.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<ThemeMode>(
+              showSelectedIcon: false,
+              segments: const <ButtonSegment<ThemeMode>>[
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.dark,
+                  icon: Icon(Icons.dark_mode_outlined),
+                  label: Text('Dark'),
+                ),
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.light,
+                  icon: Icon(Icons.light_mode_outlined),
+                  label: Text('Light'),
+                ),
+                ButtonSegment<ThemeMode>(
+                  value: ThemeMode.system,
+                  icon: Icon(Icons.brightness_auto),
+                  label: Text('Sistema'),
+                ),
+              ],
+              selected: <ThemeMode>{currentThemeMode},
+              onSelectionChanged: (selection) {
+                final mode = selection.first;
+                onThemeModeChanged?.call(mode);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.email,

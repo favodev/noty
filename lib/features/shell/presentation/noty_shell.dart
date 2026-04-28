@@ -11,7 +11,6 @@ import 'package:noty/features/feed/data/native_notifications_bridge.dart';
 import 'package:noty/features/feed/data/supabase_notifications_sync.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
-import 'package:noty/features/search/presentation/search_page.dart';
 import 'package:noty/features/settings/presentation/settings_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -19,11 +18,13 @@ class NotyShell extends StatefulWidget {
   const NotyShell({
     super.key,
     required this.supabaseState,
+    required this.currentThemeMode,
     this.enableLocalPersistence = true,
     this.onThemeChanged,
   });
 
   final SupabaseBootstrapState supabaseState;
+  final ThemeMode currentThemeMode;
   final bool enableLocalPersistence;
   final void Function(ThemeMode mode)? onThemeChanged;
 
@@ -437,30 +438,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     _isRecoveryFlowOpen = false;
   }
 
-  Future<void> _openSearch() async {
-    if (!mounted) {
-      return;
-    }
-
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => SearchPage(
-          notifications: _notifications,
-          isLoading: _isLoadingNotifications,
-          errorMessage: _notificationsError,
-          scrollController: scrollController,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final tabs = <Widget>[
@@ -469,10 +446,10 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         isLoading: _isLoadingNotifications,
         errorMessage: _notificationsError,
         onRefreshRequested: _loadNotifications,
-        onSearchRequested: _openSearch,
       ),
       SettingsPage(
         supabaseState: widget.supabaseState,
+        currentThemeMode: widget.currentThemeMode,
         notificationListenerEnabled: _isNotificationListenerEnabled,
         authEmail: _currentUser?.email,
         isEmailConfirmed: _isEmailConfirmed,
@@ -486,21 +463,13 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         onOpenNotificationSettings: () async {
           await _nativeBridge.openNotificationListenerSettings();
         },
+        onThemeModeChanged: widget.onThemeChanged,
       ),
     ];
 
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_index]),
-        actions: _index == 0
-            ? <Widget>[
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: _openSearch,
-                  tooltip: 'Buscar en historial',
-                ),
-              ]
-            : null,
       ),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 220),

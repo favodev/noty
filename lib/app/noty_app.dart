@@ -31,6 +31,7 @@ class _NotyAppState extends State<NotyApp> {
       home: NotyShell(
         supabaseState: widget.supabaseState,
         enableLocalPersistence: widget.enableLocalPersistence,
+        currentThemeMode: _themeMode,
         onThemeChanged: (mode) {
           if (!mounted) return;
           setState(() {

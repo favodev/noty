@@ -7,14 +7,12 @@ class FeedPage extends StatefulWidget {
     required this.notifications,
     required this.isLoading,
     required this.onRefreshRequested,
-    required this.onSearchRequested,
     this.errorMessage,
   });
 
   final List<NotificationItem> notifications;
   final bool isLoading;
   final Future<void> Function() onRefreshRequested;
-  final Future<void> Function() onSearchRequested;
   final String? errorMessage;
 
   @override
@@ -22,6 +20,7 @@ class FeedPage extends StatefulWidget {
 }
 
 class _FeedPageState extends State<FeedPage> {
+  String _query = '';
   String _selectedApp = 'Todas';
   bool _onlyUnread = false;
   bool _showContent = false;
@@ -48,7 +47,8 @@ class _FeedPageState extends State<FeedPage> {
     final filtered = widget.notifications.where((item) {
       final matchesApp = _selectedApp == 'Todas' || item.appName == _selectedApp;
       final matchesUnread = !_onlyUnread || item.isUnread;
-      return matchesApp && matchesUnread;
+      final matchesQuery = item.matchesQuery(_query);
+      return matchesApp && matchesUnread && matchesQuery;
     }).toList();
 
     filtered.sort((a, b) => b.receivedAt.compareTo(a.receivedAt));
@@ -58,6 +58,7 @@ class _FeedPageState extends State<FeedPage> {
   @override
   Widget build(BuildContext context) {
     final items = _visibleItems;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -74,8 +75,20 @@ class _FeedPageState extends State<FeedPage> {
           Text(
             'Todas las notificaciones capturadas por Noty.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  color: colorScheme.onSurfaceVariant,
                 ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                _query = value;
+              });
+            },
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: 'Buscar por app, titulo o contenido...',
+            ),
           ),
           const SizedBox(height: 14),
           Row(
@@ -124,16 +137,16 @@ class _FeedPageState extends State<FeedPage> {
                 duration: const Duration(milliseconds: 180),
                 child: widget.isLoading
                     ? const _LoadingFeed()
-                    : widget.errorMessage != null
-                        ? _FeedError(
-                            message: widget.errorMessage!,
-                            onRetry: widget.onRefreshRequested,
-                          )
+                        : widget.errorMessage != null
+                            ? _FeedError(
+                                message: widget.errorMessage!,
+                                onRetry: widget.onRefreshRequested,
+                              )
                         : items.isEmpty
-                            ? const _EmptyFeed()
+                            ? _EmptyFeed(hasQuery: _query.trim().isNotEmpty)
                             : ListView.separated(
                                 key: ValueKey<String>(
-                                  '${_selectedApp}_${_onlyUnread}_${items.length}',
+                                  '${_selectedApp}_${_onlyUnread}_${items.length}_$_query',
                                 ),
                                 itemCount: items.length,
                                 separatorBuilder: (_, _) => const SizedBox(height: 10),
@@ -262,14 +275,20 @@ class _NotificationCard extends StatelessWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed();
+  const _EmptyFeed({
+    this.hasQuery = false,
+  });
+
+  final bool hasQuery;
 
   @override
   Widget build(BuildContext context) {
     return Center(
       key: const ValueKey<String>('empty-feed'),
       child: Text(
-        'No hay notificaciones para ese filtro.',
+        hasQuery
+            ? 'No encontramos coincidencias para tu busqueda.'
+            : 'No hay notificaciones para ese filtro.',
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
