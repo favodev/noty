@@ -57,8 +57,10 @@ class _FeedPageState extends State<FeedPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final items = _visibleItems;
-    final colorScheme = Theme.of(context).colorScheme;
+    final colorScheme = theme.colorScheme;
+    final hasQuery = _query.trim().isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -67,55 +69,79 @@ class _FeedPageState extends State<FeedPage> {
         children: <Widget>[
           Text(
             'Historial reciente',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
           ),
           const SizedBox(height: 8),
           Text(
             'Todas las notificaciones capturadas por Noty.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodyMedium?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           TextField(
             onChanged: (value) {
               setState(() {
                 _query = value;
               });
             },
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
               hintText: 'Buscar por app, titulo o contenido...',
+              suffixIcon: hasQuery
+                  ? IconButton(
+                      tooltip: 'Limpiar búsqueda',
+                      onPressed: () {
+                        setState(() {
+                          _query = '';
+                        });
+                      },
+                      icon: const Icon(Icons.close),
+                    )
+                  : null,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Row(
             children: <Widget>[
-              Expanded(
-                child: SizedBox(
-                  height: 34,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _appFilters.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (context, index) {
-                      final appName = _appFilters[index];
-                      return ChoiceChip(
-                        label: Text(appName),
-                        selected: _selectedApp == appName,
-                        onSelected: (_) {
-                          setState(() {
-                            _selectedApp = appName;
-                          });
-                        },
-                      );
-                    },
-                  ),
+              Text(
+                '${items.length} resultado${items.length == 1 ? '' : 's'}',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(width: 8),
+              const Spacer(),
+              if (hasQuery || _selectedApp != 'Todas' || _onlyUnread)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _query = '';
+                      _selectedApp = 'Todas';
+                      _onlyUnread = false;
+                    });
+                  },
+                  child: const Text('Limpiar filtros'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final appName in _appFilters)
+                ChoiceChip(
+                  label: Text(appName),
+                  selected: _selectedApp == appName,
+                  onSelected: (_) {
+                    setState(() {
+                      _selectedApp = appName;
+                    });
+                  },
+                ),
               FilterChip(
                 selected: _onlyUnread,
                 onSelected: (value) {
@@ -123,11 +149,15 @@ class _FeedPageState extends State<FeedPage> {
                     _onlyUnread = value;
                   });
                 },
-                label: const Text('No leidas'),
+                avatar: Icon(
+                  _onlyUnread ? Icons.mark_email_unread_rounded : Icons.drafts_outlined,
+                  size: 16,
+                ),
+                label: const Text('No leídas'),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Expanded(
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 220),
@@ -137,23 +167,27 @@ class _FeedPageState extends State<FeedPage> {
                 duration: const Duration(milliseconds: 180),
                 child: widget.isLoading
                     ? const _LoadingFeed()
-                        : widget.errorMessage != null
-                            ? _FeedError(
-                                message: widget.errorMessage!,
-                                onRetry: widget.onRefreshRequested,
-                              )
+                    : widget.errorMessage != null
+                        ? _FeedError(
+                            message: widget.errorMessage!,
+                            onRetry: widget.onRefreshRequested,
+                          )
                         : items.isEmpty
-                            ? _EmptyFeed(hasQuery: _query.trim().isNotEmpty)
-                            : ListView.separated(
-                                key: ValueKey<String>(
-                                  '${_selectedApp}_${_onlyUnread}_${items.length}_$_query',
+                            ? _EmptyFeed(hasQuery: hasQuery)
+                            : RefreshIndicator(
+                                onRefresh: widget.onRefreshRequested,
+                                child: ListView.separated(
+                                  key: ValueKey<String>(
+                                    '${_selectedApp}_${_onlyUnread}_${items.length}_$_query',
+                                  ),
+                                  padding: const EdgeInsets.only(bottom: 24),
+                                  itemCount: items.length,
+                                  separatorBuilder: (_, _) => const SizedBox(height: 12),
+                                  itemBuilder: (context, index) {
+                                    final item = items[index];
+                                    return _NotificationCard(item: item);
+                                  },
                                 ),
-                                itemCount: items.length,
-                                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                                itemBuilder: (context, index) {
-                                  final item = items[index];
-                                  return _NotificationCard(item: item);
-                                },
                               ),
               ),
             ),
@@ -176,23 +210,28 @@ class _NotificationCard extends StatelessWidget {
     final iconBackground = item.isUnread
         ? colorScheme.tertiaryContainer
         : colorScheme.surfaceContainerHighest;
+    final theme = Theme.of(context);
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Container(
-              width: 36,
-              height: 36,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 color: iconBackground,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.notifications_active_outlined, size: 20),
+              child: Icon(
+                Icons.notifications_active_outlined,
+                size: 20,
+                color: item.isUnread ? colorScheme.tertiary : colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +243,7 @@ class _NotificationCard extends StatelessWidget {
                           item.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
                         ),
@@ -212,31 +251,34 @@ class _NotificationCard extends StatelessWidget {
                       const SizedBox(width: 10),
                       Text(
                         _formatRelativeTime(item.receivedAt),
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        style: theme.textTheme.labelMedium?.copyWith(
                               color: colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
                             ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     item.body,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurface.withValues(alpha: 0.9),
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Row(
                     children: <Widget>[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: labelColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
                           item.appName,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          style: theme.textTheme.labelSmall?.copyWith(
                                 color: labelColor,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -283,15 +325,48 @@ class _EmptyFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     return Center(
       key: const ValueKey<String>('empty-feed'),
-      child: Text(
-        hasQuery
-            ? 'No encontramos coincidencias para tu busqueda.'
-            : 'No hay notificaciones para ese filtro.',
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                hasQuery ? Icons.search_off_rounded : Icons.notifications_off_outlined,
+                size: 30,
+                color: colorScheme.onSurfaceVariant,
+              ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              hasQuery ? 'No encontramos coincidencias.' : 'Todavía no hay notificaciones.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              hasQuery
+                  ? 'Probá con otro término o limpiá los filtros.'
+                  : 'Cuando llegue actividad nueva, la vas a ver acá.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
