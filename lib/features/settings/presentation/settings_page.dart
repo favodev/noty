@@ -65,12 +65,21 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final isAuthenticated = widget.authEmail != null;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       children: <Widget>[
-        // SecciÃ³n 1: Cuenta
-        _buildSectionTitle('Cuenta'),
-        const SizedBox(height: 10),
+        const _SettingsHeroCard(
+          title: 'Ajustes',
+          description: 'Gestioná tu cuenta, apariencia y permisos desde un solo lugar.',
+        ),
+        const SizedBox(height: 20),
+        const _SectionHeader(
+          title: 'Cuenta',
+          subtitle: 'Estado de tu sesión y sincronización.',
+          icon: Icons.account_circle_outlined,
+        ),
+        const SizedBox(height: 12),
         _AccountCard(
           email: widget.authEmail,
           isEmailConfirmed: widget.isEmailConfirmed,
@@ -79,15 +88,17 @@ class _SettingsPageState extends State<SettingsPage> {
               ? null
               : () => _handleAuthAction(
                     widget.onSignOut,
-                    successMessage: 'Sesion cerrada',
+                    successMessage: 'Sesión cerrada',
                   ),
         ),
-
-        // SecciÃ³n 2: AutenticaciÃ³n (solo si no hay sesiÃ³n)
         if (!isAuthenticated) ...<Widget>[
           const SizedBox(height: 20),
-          _buildSectionTitle('Acceder'),
-          const SizedBox(height: 10),
+          const _SectionHeader(
+            title: 'Acceder',
+            subtitle: 'Iniciá sesión o creá una cuenta para guardar tu historial.',
+            icon: Icons.login_rounded,
+          ),
+          const SizedBox(height: 12),
           _AuthFormCard(
             supabaseInitialized: widget.supabaseState.initialized,
             isAuthBusy: widget.isAuthBusy,
@@ -104,7 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _emailController.text,
                 _passwordController.text,
               ),
-              successMessage: 'Sesion iniciada',
+              successMessage: 'Sesión iniciada',
             ),
             onSignUp: () => _handleAuthAction(
               () => widget.onSignUp(
@@ -115,16 +126,18 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             onRequestPasswordReset: () => _handleAuthAction(
               () => widget.onRequestPasswordReset(_emailController.text),
-              successMessage: 'Email de recuperacion enviado',
+              successMessage: 'Email de recuperación enviado',
             ),
           ),
         ],
-
-        // SecciÃ³n 3: RecuperaciÃ³n de password
         if (widget.isPasswordRecoveryMode) ...<Widget>[
           const SizedBox(height: 20),
-          _buildSectionTitle('Recuperar password'),
-          const SizedBox(height: 10),
+          const _SectionHeader(
+            title: 'Recuperar password',
+            subtitle: 'Definí una nueva contraseña para tu cuenta.',
+            icon: Icons.lock_reset_outlined,
+          ),
+          const SizedBox(height: 12),
           _PasswordRecoveryCard(
             isAuthBusy: widget.isAuthBusy,
             controller: _recoveryPasswordController,
@@ -136,33 +149,29 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
         ],
-
-        // SecciÃ³n 4: Permisos Android
         const SizedBox(height: 20),
-        _buildSectionTitle('Apariencia'),
-        const SizedBox(height: 10),
+        const _SectionHeader(
+          title: 'Apariencia',
+          subtitle: 'Elegí cómo querés ver Noty durante el día.',
+          icon: Icons.palette_outlined,
+        ),
+        const SizedBox(height: 12),
         _ThemeModeCard(
           currentThemeMode: widget.currentThemeMode,
           onThemeModeChanged: widget.onThemeModeChanged,
         ),
         const SizedBox(height: 20),
-        _buildSectionTitle('Acceso a notificaciones'),
-        const SizedBox(height: 10),
+        const _SectionHeader(
+          title: 'Acceso a notificaciones',
+          subtitle: 'Verificá que Android esté entregando las notificaciones a Noty.',
+          icon: Icons.notifications_outlined,
+        ),
+        const SizedBox(height: 12),
         _NotificationPermissionCard(
           isEnabled: widget.notificationListenerEnabled,
           onOpenSettings: widget.onOpenNotificationSettings,
         ),
-
       ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-          ),
     );
   }
 
@@ -183,7 +192,120 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-// Widgets
+class _SettingsHeroCard extends StatelessWidget {
+  const _SettingsHeroCard({
+    required this.title,
+    required this.description,
+  });
+
+  final String title;
+  final String description;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(Icons.tune_rounded, color: colorScheme.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: colorScheme.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ThemeModeCard extends StatelessWidget {
   const _ThemeModeCard({
     required this.currentThemeMode,
@@ -199,12 +321,12 @@ class _ThemeModeCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'ElegÃ­ cÃ³mo querÃ©s ver Noty.',
+              'Elegí cómo querés ver Noty.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -263,26 +385,48 @@ class _AccountCard extends StatelessWidget {
     final badgeColor = isAuthenticated
         ? (isEmailConfirmed ? colorScheme.primary : colorScheme.tertiary)
         : colorScheme.error;
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(
-                  isAuthenticated ? Icons.check_circle : Icons.cancel,
-                  color: statusColor,
-                  size: 20,
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isAuthenticated ? Icons.check_circle : Icons.cancel,
+                    color: statusColor,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    isAuthenticated
-                        ? (email ?? 'Sin email')
-                        : 'Sin sesion',
-                    style: theme.textTheme.bodyMedium,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        isAuthenticated ? 'Cuenta conectada' : 'Sin cuenta conectada',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isAuthenticated
+                            ? (email ?? 'Sin email')
+                            : 'Iniciá sesión para sincronizar tu historial.',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
                   ),
                 ),
                 _StatusBadge(
@@ -294,12 +438,13 @@ class _AccountCard extends StatelessWidget {
               ],
             ),
             if (isAuthenticated) ...<Widget>[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                child: OutlinedButton(
+                child: OutlinedButton.icon(
                   onPressed: onSignOut,
-                  child: const Text('Cerrar sesion'),
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Cerrar sesión'),
                 ),
               ),
             ],
@@ -336,28 +481,51 @@ class _AuthFormCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             if (!showForm) ...<Widget>[
               Text(
-                'Inicia sesion o crea una cuenta para sincronizar tus notificaciones.',
+                'Sincronización en la nube',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Iniciá sesión o creá una cuenta para sincronizar tus notificaciones.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              if (!supabaseInitialized) ...<Widget>[
+                const SizedBox(height: 10),
+                const _InlineNotice(
+                  icon: Icons.info_outline,
+                  message: 'Supabase no está configurado todavía.',
+                ),
+              ],
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FilledButton.icon(
                   onPressed: supabaseInitialized ? onToggleForm : null,
-                  child: const Text('Acceder'),
+                  icon: const Icon(Icons.login_rounded),
+                  label: const Text('Acceder'),
                 ),
               ),
             ] else ...<Widget>[
+              Text(
+                'Ingresá con tu cuenta',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -380,7 +548,7 @@ class _AuthFormCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: isAuthBusy ? null : onSignIn,
-                      child: const Text('Iniciar sesion'),
+                      child: const Text('Iniciar sesión'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -396,7 +564,7 @@ class _AuthFormCard extends StatelessWidget {
               Center(
                 child: TextButton(
                   onPressed: isAuthBusy ? null : onRequestPasswordReset,
-                  child: const Text('Olvide mi password'),
+                  child: const Text('Olvidé mi password'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -428,22 +596,23 @@ class _PasswordRecoveryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Card(
       color: theme.colorScheme.primaryContainer,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Recuperacion de password',
+              'Recuperación de password',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Ingresa tu nueva password (minimo 8 caracteres).',
+              'Ingresá tu nueva password (mínimo 8 caracteres).',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 10),
@@ -457,9 +626,10 @@ class _PasswordRecoveryCard extends StatelessWidget {
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
+              child: FilledButton.icon(
                 onPressed: isAuthBusy ? null : onUpdatePassword,
-                child: const Text('Actualizar password'),
+                icon: const Icon(Icons.lock_reset),
+                label: const Text('Actualizar password'),
               ),
             ),
           ],
@@ -483,28 +653,50 @@ class _NotificationPermissionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final statusColor = isEnabled ? colorScheme.primary : colorScheme.tertiary;
+
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(
-                  isEnabled ? Icons.check_circle : Icons.warning,
-                  color: statusColor,
-                  size: 20,
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isEnabled ? Icons.check_circle : Icons.warning,
+                    color: statusColor,
+                    size: 20,
+                  ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    isEnabled
-                        ? 'Notificaciones capturadas'
-                        : 'Sin acceso a notificaciones',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        isEnabled ? 'Captura activa' : 'Permiso pendiente',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        isEnabled
+                            ? 'Android ya está entregando notificaciones a Noty.'
+                            : 'Necesitás habilitar el acceso para empezar a guardar notificaciones.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 _StatusBadge(
@@ -514,17 +706,55 @@ class _NotificationPermissionCard extends StatelessWidget {
               ],
             ),
             if (!isEnabled) ...<Widget>[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: FilledButton.icon(
                   onPressed: onOpenSettings,
-                  child: const Text('Habilitar acceso'),
+                  icon: const Icon(Icons.open_in_new_rounded),
+                  label: const Text('Habilitar acceso'),
                 ),
               ),
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InlineNotice extends StatelessWidget {
+  const _InlineNotice({
+    required this.icon,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, size: 18, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
