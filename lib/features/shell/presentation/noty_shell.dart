@@ -1,16 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:noty/core/config/app_env.dart';
 import 'package:noty/core/supabase/supabase_bootstrap.dart';
-import 'package:noty/features/auth/data/supabase_auth_service.dart';
 import 'package:noty/features/auth/presentation/password_recovery_page.dart';
-import 'package:noty/features/feed/data/local_notifications_repository.dart';
-import 'package:noty/features/feed/data/mock_notifications.dart';
-import 'package:noty/features/feed/data/native_notifications_bridge.dart';
-import 'package:noty/features/feed/data/supabase_notifications_sync.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
+import 'package:noty/features/shell/data/noty_shell_service.dart';
 import 'package:noty/features/settings/presentation/settings_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,10 +28,7 @@ class NotyShell extends StatefulWidget {
 }
 
 class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
-  final SupabaseAuthService _authService = SupabaseAuthService();
-  final LocalNotificationsRepository _repository = LocalNotificationsRepository();
-  final NativeNotificationsBridge _nativeBridge = NativeNotificationsBridge();
-  final SupabaseNotificationsSync _supabaseSync = SupabaseNotificationsSync();
+  final NotyShellService _shellService = NotyShellService();
 
   StreamSubscription<AuthState>? _authSubscription;
   bool _isRecoveryFlowOpen = false;
@@ -52,10 +44,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   User? _currentUser;
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
-  static const List<String> _titles = <String>[
-    'Inicio',
-    'Ajustes',
-  ];
+  static const List<String> _titles = <String>['Inicio', 'Ajustes'];
 
   @override
   void initState() {
@@ -63,34 +52,9 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
 
     if (widget.supabaseState.initialized) {
-      _currentUser = _authService.currentUser;
-      _isEmailConfirmed = _authService.isEmailConfirmed;
-      _authSubscription = _authService.authStateChanges().listen((state) {
-        if (!mounted) {
-          return;
-        }
-
-        final isRecoveryEvent = state.event == AuthChangeEvent.passwordRecovery;
-        final isSignedOutEvent = state.event == AuthChangeEvent.signedOut;
-
-        setState(() {
-          _currentUser = state.session?.user;
-          _isEmailConfirmed = _authService.isEmailConfirmed;
-          if (isRecoveryEvent) {
-            _isPasswordRecoveryMode = true;
-          } else if (isSignedOutEvent) {
-            _isPasswordRecoveryMode = false;
-          }
-        });
-
-        if (state.session?.user != null) {
-          unawaited(_syncPendingNotifications());
-        }
-
-        if (isRecoveryEvent) {
-          unawaited(_openPasswordRecoveryFlow());
-        }
-      });
+      _currentUser = _shellService.currentUser;
+      _isEmailConfirmed = _shellService.isEmailConfirmed;
+      _authSubscription = _shellService.authStateChanges().listen(_handleAuthStateChanged);
     }
 
     _loadNotifications();
@@ -100,7 +64,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _authSubscription?.cancel();
-    _repository.dispose();
+    unawaited(_shellService.dispose());
     super.dispose();
   }
 
@@ -108,6 +72,33 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadNotifications();
+    }
+  }
+
+  void _handleAuthStateChanged(AuthState state) {
+    if (!mounted) {
+      return;
+    }
+
+    final isRecoveryEvent = state.event == AuthChangeEvent.passwordRecovery;
+    final isSignedOutEvent = state.event == AuthChangeEvent.signedOut;
+
+    setState(() {
+      _currentUser = state.session?.user;
+      _isEmailConfirmed = _shellService.isEmailConfirmed;
+      if (isRecoveryEvent) {
+        _isPasswordRecoveryMode = true;
+      } else if (isSignedOutEvent) {
+        _isPasswordRecoveryMode = false;
+      }
+    });
+
+    if (state.session?.user != null) {
+      unawaited(_syncPendingNotifications());
+    }
+
+    if (isRecoveryEvent) {
+      unawaited(_openPasswordRecoveryFlow());
     }
   }
 
@@ -121,52 +112,24 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       _notificationsError = null;
     });
 
-    if (!widget.enableLocalPersistence) {
-      setState(() {
-        _notifications = buildMockNotifications();
-        _isLoadingNotifications = false;
-      });
+    final result = await _shellService.loadNotifications(
+      enableLocalPersistence: widget.enableLocalPersistence,
+      supabaseInitialized: widget.supabaseState.initialized,
+    );
 
-      if (widget.supabaseState.initialized) {
-        unawaited(_syncPendingNotifications());
-      }
+    if (!mounted) {
       return;
     }
 
-    try {
-      await _repository.initialize();
-      await _repository.seedIfEmpty(buildMockNotifications());
+    setState(() {
+      _notifications = result.notifications;
+      _isLoadingNotifications = false;
+      _isNotificationListenerEnabled = result.listenerEnabled;
+      _notificationsError = result.errorMessage;
+    });
 
-      final listenerEnabled = await _nativeBridge.isNotificationListenerEnabled();
-      final nativeNotifications = await _nativeBridge.drainPendingNotifications();
-      for (final item in nativeNotifications) {
-        await _repository.upsert(item);
-      }
-
-      final notifications = await _repository.getAll();
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _notifications = notifications;
-        _isLoadingNotifications = false;
-        _isNotificationListenerEnabled = listenerEnabled;
-      });
-
-      if (widget.supabaseState.initialized) {
-        unawaited(_syncPendingNotifications());
-      }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isLoadingNotifications = false;
-        _notificationsError = 'No pudimos cargar notificaciones locales.';
-      });
+    if (widget.supabaseState.initialized) {
+      unawaited(_syncPendingNotifications());
     }
   }
 
@@ -175,218 +138,92 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       return;
     }
 
-    if (!widget.supabaseState.initialized) {
-      return;
-    }
-
-    if (_currentUser == null) {
-      return;
-    }
-
-    if (!widget.enableLocalPersistence) {
-      return;
-    }
-
     setState(() {
       _isSyncingNotifications = true;
     });
 
-    try {
-      final pending = await _repository.getPendingSync(limit: 100);
-      if (pending.isEmpty) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _isSyncingNotifications = false;
-        });
-        return;
-      }
+    final result = await _shellService.syncPendingNotifications(
+      enableLocalPersistence: widget.enableLocalPersistence,
+      supabaseInitialized: widget.supabaseState.initialized,
+      currentUser: _currentUser,
+    );
 
-      final result = await _supabaseSync.sync(pending);
-
-      if (result.syncedIds.isNotEmpty) {
-        await _repository.markAsSynced(result.syncedIds);
-      }
-
-      for (final failure in result.failed) {
-        await _repository.markAsSyncFailed(failure.notificationId, failure.message);
-      }
-
-      final refreshed = await _repository.getAll();
-
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _notifications = refreshed;
-        _isSyncingNotifications = false;
-      });
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      setState(() {
-        _isSyncingNotifications = false;
-      });
+    if (!mounted) {
+      return;
     }
+
+    setState(() {
+      if (result.notifications.isNotEmpty) {
+        _notifications = result.notifications;
+      }
+      _isSyncingNotifications = false;
+    });
   }
 
   Future<String?> _signIn(String email, String password) async {
-    if (!widget.supabaseState.initialized) {
-      return 'Supabase no esta inicializado.';
-    }
-
-    final normalizedEmail = email.trim();
-    if (normalizedEmail.isEmpty || password.isEmpty) {
-      return 'Email y password son obligatorios.';
-    }
-
-    setState(() {
-      _isAuthBusy = true;
-    });
-
-    try {
-      await _authService.signInWithPassword(
-        email: normalizedEmail,
+    return _runAuthAction(() async {
+      await _shellService.signIn(
+        supabaseInitialized: widget.supabaseState.initialized,
+        email: email,
         password: password,
       );
-      return null;
-    } on AuthException catch (error) {
-      return error.message;
-    } catch (_) {
-      return 'No pudimos iniciar sesion.';
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAuthBusy = false;
-        });
-      }
-    }
+    });
   }
 
   Future<String?> _signUp(String email, String password) async {
-    if (!widget.supabaseState.initialized) {
-      return 'Supabase no esta inicializado.';
-    }
-
-    final normalizedEmail = email.trim();
-    if (normalizedEmail.isEmpty || password.isEmpty) {
-      return 'Email y password son obligatorios.';
-    }
-
-    setState(() {
-      _isAuthBusy = true;
-    });
-
-    try {
-      await _authService.signUpWithPassword(
-        email: normalizedEmail,
+    return _runAuthAction(() async {
+      await _shellService.signUp(
+        supabaseInitialized: widget.supabaseState.initialized,
+        email: email,
         password: password,
       );
-      return null;
-    } on AuthException catch (error) {
-      return error.message;
-    } catch (_) {
-      return 'No pudimos crear la cuenta.';
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAuthBusy = false;
-        });
-      }
-    }
+    });
   }
 
   Future<String?> _signOut() async {
-    if (!widget.supabaseState.initialized) {
-      return 'Supabase no esta inicializado.';
-    }
-
-    setState(() {
-      _isAuthBusy = true;
+    return _runAuthAction(() async {
+      await _shellService.signOut(
+        supabaseInitialized: widget.supabaseState.initialized,
+      );
     });
-
-    try {
-      await _authService.signOut();
-      return null;
-    } on AuthException catch (error) {
-      return error.message;
-    } catch (_) {
-      return 'No pudimos cerrar sesion.';
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAuthBusy = false;
-        });
-      }
-    }
   }
 
   Future<String?> _requestPasswordReset(String email) async {
-    if (!widget.supabaseState.initialized) {
-      return 'Supabase no esta inicializado.';
-    }
-
-    final normalizedEmail = email.trim();
-    if (normalizedEmail.isEmpty) {
-      return 'Ingresa un email valido.';
-    }
-
-    setState(() {
-      _isAuthBusy = true;
-    });
-
-    try {
-      await _authService.sendPasswordResetEmail(
-        email: normalizedEmail,
-        redirectTo: AppEnv.supabaseAuthRedirect,
+    return _runAuthAction(() async {
+      await _shellService.requestPasswordReset(
+        supabaseInitialized: widget.supabaseState.initialized,
+        email: email,
       );
-      return null;
-    } on AuthException catch (error) {
-      return error.message;
-    } catch (_) {
-      return 'No pudimos enviar el email de recuperacion.';
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isAuthBusy = false;
-        });
-      }
-    }
+    });
   }
 
   Future<String?> _updateRecoveredPassword(String password) async {
-    if (!widget.supabaseState.initialized) {
-      return 'Supabase no esta inicializado.';
-    }
-
-    if (!_isPasswordRecoveryMode) {
-      return 'No hay recuperacion activa.';
-    }
-
-    if (password.length < 8) {
-      return 'La nueva password debe tener al menos 8 caracteres.';
-    }
-
-    setState(() {
-      _isAuthBusy = true;
-    });
-
-    try {
-      await _authService.updatePassword(password);
+    return _runAuthAction(() async {
+      await _shellService.updateRecoveredPassword(
+        supabaseInitialized: widget.supabaseState.initialized,
+        isPasswordRecoveryMode: _isPasswordRecoveryMode,
+        password: password,
+      );
       if (mounted) {
         setState(() {
           _isPasswordRecoveryMode = false;
         });
       }
+    });
+  }
+
+  Future<String?> _runAuthAction(Future<void> Function() action) async {
+    setState(() {
+      _isAuthBusy = true;
+    });
+
+    try {
+      await action();
       return null;
     } on AuthException catch (error) {
       return error.message;
-    } catch (_) {
-      return 'No pudimos actualizar la password.';
+    } catch (error) {
+      return error.toString();
     } finally {
       if (mounted) {
         setState(() {
@@ -438,9 +275,8 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     _isRecoveryFlowOpen = false;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final tabs = <Widget>[
+  List<Widget> _buildTabs() {
+    return <Widget>[
       FeedPage(
         notifications: _notifications,
         isLoading: _isLoadingNotifications,
@@ -460,17 +296,18 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         onSignOut: _signOut,
         onRequestPasswordReset: _requestPasswordReset,
         onUpdateRecoveredPassword: _updateRecoveredPassword,
-        onOpenNotificationSettings: () async {
-          await _nativeBridge.openNotificationListenerSettings();
-        },
+        onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
         onThemeModeChanged: widget.onThemeChanged,
       ),
     ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tabs = _buildTabs();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_index]),
-      ),
+      appBar: AppBar(title: Text(_titles[_index])),
       body: AnimatedSwitcher(
         duration: const Duration(milliseconds: 220),
         switchInCurve: Curves.easeOutCubic,
