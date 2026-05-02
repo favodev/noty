@@ -55,7 +55,6 @@ class NotyShellService {
 
   Future<NotyShellLoadResult> loadNotifications({
     required bool enableLocalPersistence,
-    required bool supabaseInitialized,
   }) async {
     if (!enableLocalPersistence) {
       return NotyShellLoadResult(

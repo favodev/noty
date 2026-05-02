@@ -114,7 +114,6 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
     final result = await _shellService.loadNotifications(
       enableLocalPersistence: widget.enableLocalPersistence,
-      supabaseInitialized: widget.supabaseState.initialized,
     );
 
     if (!mounted) {
@@ -153,7 +152,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     }
 
     setState(() {
-      if (result.notifications.isNotEmpty) {
+      if (result.completed) {
         _notifications = result.notifications;
       }
       _isSyncingNotifications = false;
