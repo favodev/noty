@@ -1,4 +1,4 @@
-package com.example.noty
+package dev.favo.noty
 
 import android.app.Notification
 import android.service.notification.NotificationListenerService
