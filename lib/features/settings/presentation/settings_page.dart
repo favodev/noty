@@ -71,12 +71,12 @@ class _SettingsPageState extends State<SettingsPage> {
       children: <Widget>[
         const _SettingsHeroCard(
           title: 'Ajustes',
-          description: 'Gestioná tu cuenta, apariencia y permisos desde un solo lugar.',
+          description: 'Gestionï¿½ tu cuenta, apariencia y permisos desde un solo lugar.',
         ),
         const SizedBox(height: 20),
         const _SectionHeader(
           title: 'Cuenta',
-          subtitle: 'Estado de tu sesión y sincronización.',
+          subtitle: 'Estado de tu sesiÃ³n y respaldo seguro.',
           icon: Icons.account_circle_outlined,
         ),
         const SizedBox(height: 12),
@@ -88,14 +88,14 @@ class _SettingsPageState extends State<SettingsPage> {
               ? null
               : () => _handleAuthAction(
                     widget.onSignOut,
-                    successMessage: 'Sesión cerrada',
+                    successMessage: 'Sesiï¿½n cerrada',
                   ),
         ),
         if (!isAuthenticated) ...<Widget>[
           const SizedBox(height: 20),
           const _SectionHeader(
             title: 'Acceder',
-            subtitle: 'Iniciá sesión o creá una cuenta para guardar tu historial.',
+            subtitle: 'Iniciï¿½ sesiï¿½n o creï¿½ una cuenta para guardar tu historial.',
             icon: Icons.login_rounded,
           ),
           const SizedBox(height: 12),
@@ -115,7 +115,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _emailController.text,
                 _passwordController.text,
               ),
-              successMessage: 'Sesión iniciada',
+              successMessage: 'Sesiï¿½n iniciada',
             ),
             onSignUp: () => _handleAuthAction(
               () => widget.onSignUp(
@@ -126,7 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             onRequestPasswordReset: () => _handleAuthAction(
               () => widget.onRequestPasswordReset(_emailController.text),
-              successMessage: 'Email de recuperación enviado',
+              successMessage: 'Email de recuperaciï¿½n enviado',
             ),
           ),
         ],
@@ -134,7 +134,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 20),
           const _SectionHeader(
             title: 'Recuperar password',
-            subtitle: 'Definí una nueva contraseña para tu cuenta.',
+            subtitle: 'Definï¿½ una nueva contraseï¿½a para tu cuenta.',
             icon: Icons.lock_reset_outlined,
           ),
           const SizedBox(height: 12),
@@ -152,7 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 20),
         const _SectionHeader(
           title: 'Apariencia',
-          subtitle: 'Elegí cómo querés ver Noty durante el día.',
+          subtitle: 'Elegï¿½ cï¿½mo querï¿½s ver Noty durante el dï¿½a.',
           icon: Icons.palette_outlined,
         ),
         const SizedBox(height: 12),
@@ -163,7 +163,7 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 20),
         const _SectionHeader(
           title: 'Acceso a notificaciones',
-          subtitle: 'Verificá que Android esté entregando las notificaciones a Noty.',
+          subtitle: 'Verificï¿½ que Android estï¿½ entregando las notificaciones a Noty.',
           icon: Icons.notifications_outlined,
         ),
         const SizedBox(height: 12),
@@ -326,7 +326,7 @@ class _ThemeModeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Elegí cómo querés ver Noty.',
+              'Elegï¿½ cï¿½mo querï¿½s ver Noty.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -423,7 +423,7 @@ class _AccountCard extends StatelessWidget {
                       Text(
                         isAuthenticated
                             ? (email ?? 'Sin email')
-                            : 'Iniciá sesión para sincronizar tu historial.',
+                            : 'Iniciï¿½ sesiï¿½n para sincronizar tu historial.',
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
@@ -444,7 +444,7 @@ class _AccountCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onSignOut,
                   icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Cerrar sesión'),
+                  label: const Text('Cerrar sesiï¿½n'),
                 ),
               ),
             ],
@@ -490,14 +490,14 @@ class _AuthFormCard extends StatelessWidget {
           children: <Widget>[
             if (!showForm) ...<Widget>[
               Text(
-                'Sincronización en la nube',
+                'Sincronizaciï¿½n en la nube',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Iniciá sesión o creá una cuenta para sincronizar tus notificaciones.',
+                'Iniciï¿½ sesiï¿½n o creï¿½ una cuenta para sincronizar tus notificaciones.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -506,7 +506,7 @@ class _AuthFormCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 const _InlineNotice(
                   icon: Icons.info_outline,
-                  message: 'Supabase no está configurado todavía.',
+                  message: 'Supabase no estï¿½ configurado todavï¿½a.',
                 ),
               ],
               const SizedBox(height: 12),
@@ -520,7 +520,7 @@ class _AuthFormCard extends StatelessWidget {
               ),
             ] else ...<Widget>[
               Text(
-                'Ingresá con tu cuenta',
+                'Ingresï¿½ con tu cuenta',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -548,7 +548,7 @@ class _AuthFormCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: isAuthBusy ? null : onSignIn,
-                      child: const Text('Iniciar sesión'),
+                      child: const Text('Iniciar sesiï¿½n'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -564,7 +564,7 @@ class _AuthFormCard extends StatelessWidget {
               Center(
                 child: TextButton(
                   onPressed: isAuthBusy ? null : onRequestPasswordReset,
-                  child: const Text('Olvidé mi password'),
+                  child: const Text('Olvidï¿½ mi password'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -605,14 +605,14 @@ class _PasswordRecoveryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Recuperación de password',
+              'Recuperaciï¿½n de password',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Ingresá tu nueva password (mínimo 8 caracteres).',
+              'Ingresï¿½ tu nueva password (mï¿½nimo 8 caracteres).',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 10),
@@ -690,8 +690,8 @@ class _NotificationPermissionCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         isEnabled
-                            ? 'Android ya está entregando notificaciones a Noty.'
-                            : 'Necesitás habilitar el acceso para empezar a guardar notificaciones.',
+                            ? 'Android ya estï¿½ entregando notificaciones a Noty.'
+                            : 'Necesitï¿½s habilitar el acceso para empezar a guardar notificaciones.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
