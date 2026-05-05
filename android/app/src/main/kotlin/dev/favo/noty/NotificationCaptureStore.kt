@@ -9,35 +9,17 @@ import org.json.JSONObject
 object NotificationCaptureStore {
     private const val PREFS_NAME = "noty_native_capture"
     private const val KEY_PENDING_NOTIFICATIONS = "pending_notifications"
-    private const val MAX_QUEUE_SIZE = 250
 
     fun append(context: Context, payload: Map<String, Any?>) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val queue = readQueue(prefs.getString(KEY_PENDING_NOTIFICATIONS, null))
-
-        val item = JSONObject()
-        payload.forEach { (key, value) ->
-            item.put(key, value ?: JSONObject.NULL)
-        }
-
-        queue.put(item)
-        val trimmed = trimToMaxSize(queue)
-
-        prefs.edit().putString(KEY_PENDING_NOTIFICATIONS, trimmed.toString()).apply()
+        migrateIfNeeded(context)
+        val dbHelper = NativeCaptureDatabaseHelper(context)
+        dbHelper.append(payload)
     }
 
     fun drain(context: Context): List<Map<String, Any?>> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val queue = readQueue(prefs.getString(KEY_PENDING_NOTIFICATIONS, null))
-        prefs.edit().remove(KEY_PENDING_NOTIFICATIONS).apply()
-
-        val result = mutableListOf<Map<String, Any?>>()
-        for (index in 0 until queue.length()) {
-            val jsonObject = queue.optJSONObject(index) ?: continue
-            result.add(jsonToMap(jsonObject))
-        }
-
-        return result
+        migrateIfNeeded(context)
+        val dbHelper = NativeCaptureDatabaseHelper(context)
+        return dbHelper.drain()
     }
 
     fun isListenerEnabled(context: Context): Boolean {
@@ -54,30 +36,23 @@ object NotificationCaptureStore {
         return enabledListeners.contains(flat) || enabledListeners.contains(short)
     }
 
-    private fun readQueue(rawJson: String?): JSONArray {
-        if (rawJson.isNullOrBlank()) {
-            return JSONArray()
+    private fun migrateIfNeeded(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val rawJson = prefs.getString(KEY_PENDING_NOTIFICATIONS, null)
+        
+        if (!rawJson.isNullOrBlank()) {
+            try {
+                val queue = JSONArray(rawJson)
+                val dbHelper = NativeCaptureDatabaseHelper(context)
+                for (index in 0 until queue.length()) {
+                    val jsonObject = queue.optJSONObject(index) ?: continue
+                    dbHelper.append(jsonToMap(jsonObject))
+                }
+            } catch (_: Throwable) {
+                // Si falla la migracion, igual borramos para no volver a intentar
+            }
+            prefs.edit().remove(KEY_PENDING_NOTIFICATIONS).apply()
         }
-
-        return try {
-            JSONArray(rawJson)
-        } catch (_: Throwable) {
-            JSONArray()
-        }
-    }
-
-    private fun trimToMaxSize(queue: JSONArray): JSONArray {
-        if (queue.length() <= MAX_QUEUE_SIZE) {
-            return queue
-        }
-
-        val trimmed = JSONArray()
-        val start = queue.length() - MAX_QUEUE_SIZE
-        for (index in start until queue.length()) {
-            trimmed.put(queue.get(index))
-        }
-
-        return trimmed
     }
 
     private fun jsonToMap(json: JSONObject): Map<String, Any?> {
