@@ -61,6 +61,43 @@ class NativeNotificationsBridge {
     }
   }
 
+  Future<List<Map<String, String>>> getInstalledApps() async {
+    if (!_supportsNativeBridge) {
+      return const <Map<String, String>>[];
+    }
+
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>('getInstalledApps');
+      if (result == null) return const <Map<String, String>>[];
+      
+      return result.map((dynamic item) {
+        final map = item as Map<dynamic, dynamic>;
+        return {
+          'packageName': map['packageName'].toString(),
+          'appName': map['appName'].toString(),
+        };
+      }).toList();
+    } on MissingPluginException {
+      return const <Map<String, String>>[];
+    } on PlatformException {
+      return const <Map<String, String>>[];
+    }
+  }
+
+  Future<void> updateMonitoredPackages(List<String> packages) async {
+    if (!_supportsNativeBridge) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('updateMonitoredPackages', {'packages': packages});
+    } on MissingPluginException {
+      // No-op in unsupported targets.
+    } on PlatformException {
+      // No-op.
+    }
+  }
+
   bool get _supportsNativeBridge => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   NotificationItem? _mapRawToItem(Map<Object?, Object?> raw) {

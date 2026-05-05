@@ -17,6 +17,10 @@ class NotyNotificationListenerService : NotificationListenerService() {
             return
         }
 
+        if (!AppFilterStore.isPackageMonitored(applicationContext, statusBarNotification.packageName)) {
+            return
+        }
+
         NotificationCaptureStore.append(
             context = applicationContext,
             payload = mapOf(

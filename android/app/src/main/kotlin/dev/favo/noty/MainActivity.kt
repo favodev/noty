@@ -32,6 +32,16 @@ class MainActivity : FlutterActivity() {
 						result.success(null)
 					}
 
+					"getInstalledApps" -> {
+						result.success(AppFilterStore.getInstalledApps(applicationContext))
+					}
+
+					"updateMonitoredPackages" -> {
+						val packages = call.argument<List<String>>("packages") ?: emptyList()
+						AppFilterStore.updateMonitoredPackages(applicationContext, packages)
+						result.success(null)
+					}
+
 					else -> result.notImplemented()
 				}
 			}
