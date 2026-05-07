@@ -215,7 +215,7 @@ class NotyShellService {
 
   void _ensureSupabaseInitialized(bool initialized) {
     if (!initialized) {
-      throw const _ShellValidationException('Supabase no esta inicializado.');
+      throw const _ShellValidationException('Supabase no está inicializado.');
     }
   }
 

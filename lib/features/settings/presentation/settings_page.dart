@@ -73,7 +73,7 @@ class _SettingsPageState extends State<SettingsPage> {
       children: <Widget>[
         const _SettingsHeroCard(
           title: 'Ajustes',
-          description: 'Gestion� tu cuenta, apariencia y permisos desde un solo lugar.',
+          description: 'Gestioná tu cuenta, apariencia y permisos desde un solo lugar.',
         ),
         const SizedBox(height: 20),
         const _SectionHeader(
@@ -90,14 +90,14 @@ class _SettingsPageState extends State<SettingsPage> {
               ? null
               : () => _handleAuthAction(
                     widget.onSignOut,
-                    successMessage: 'Sesi�n cerrada',
+                    successMessage: 'Sesión cerrada',
                   ),
         ),
         if (!isAuthenticated) ...<Widget>[
           const SizedBox(height: 20),
           const _SectionHeader(
             title: 'Acceder',
-            subtitle: 'Inici� sesi�n o cre� una cuenta para guardar tu historial.',
+            subtitle: 'Iniciá sesión o creá una cuenta para guardar tu historial.',
             icon: Icons.login_rounded,
           ),
           const SizedBox(height: 12),
@@ -117,7 +117,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _emailController.text,
                 _passwordController.text,
               ),
-              successMessage: 'Sesi�n iniciada',
+              successMessage: 'Sesión iniciada',
             ),
             onSignUp: () => _handleAuthAction(
               () => widget.onSignUp(
@@ -128,7 +128,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             onRequestPasswordReset: () => _handleAuthAction(
               () => widget.onRequestPasswordReset(_emailController.text),
-              successMessage: 'Email de recuperaci�n enviado',
+              successMessage: 'Email de recuperación enviado',
             ),
           ),
         ],
@@ -136,7 +136,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 20),
           const _SectionHeader(
             title: 'Recuperar password',
-            subtitle: 'Defin� una nueva contrase�a para tu cuenta.',
+            subtitle: 'Definí una nueva contraseña.',
             icon: Icons.lock_reset_outlined,
           ),
           const SizedBox(height: 12),
@@ -154,7 +154,7 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 20),
         const _SectionHeader(
           title: 'Apariencia',
-          subtitle: 'Eleg� c�mo quer�s ver Noty durante el d�a.',
+          subtitle: 'Elegí cómo querés ver Noty durante el día.',
           icon: Icons.palette_outlined,
         ),
         const SizedBox(height: 12),
@@ -329,7 +329,7 @@ class _ThemeModeCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Eleg� c�mo quer�s ver Noty.',
+              'Elegí cómo querés ver Noty.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -426,7 +426,7 @@ class _AccountCard extends StatelessWidget {
                       Text(
                         isAuthenticated
                             ? (email ?? 'Sin email')
-                            : 'Inici� sesi�n para sincronizar tu historial.',
+                            : 'Iniciá sesión para sincronizar tu historial.',
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
@@ -447,7 +447,7 @@ class _AccountCard extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: onSignOut,
                   icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Cerrar sesi�n'),
+                  label: const Text('Cerrar sesión'),
                 ),
               ),
             ],
@@ -493,14 +493,14 @@ class _AuthFormCard extends StatelessWidget {
           children: <Widget>[
             if (!showForm) ...<Widget>[
               Text(
-                'Sincronizaci�n en la nube',
+                'Sincronización en la nube',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
-                'Inici� sesi�n o cre� una cuenta para sincronizar tus notificaciones.',
+                'Iniciá sesión o creá una cuenta para sincronizar tus notificaciones.',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -509,7 +509,7 @@ class _AuthFormCard extends StatelessWidget {
                 const SizedBox(height: 10),
                 const _InlineNotice(
                   icon: Icons.info_outline,
-                  message: 'Supabase no est� configurado todav�a.',
+                  message: 'Supabase no está configurado todavía.',
                 ),
               ],
               const SizedBox(height: 12),
@@ -523,7 +523,7 @@ class _AuthFormCard extends StatelessWidget {
               ),
             ] else ...<Widget>[
               Text(
-                'Ingres� con tu cuenta',
+                'Ingresá con tu cuenta',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -551,7 +551,7 @@ class _AuthFormCard extends StatelessWidget {
                   Expanded(
                     child: FilledButton(
                       onPressed: isAuthBusy ? null : onSignIn,
-                      child: const Text('Iniciar sesi�n'),
+                      child: const Text('Iniciar sesión'),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -567,7 +567,7 @@ class _AuthFormCard extends StatelessWidget {
               Center(
                 child: TextButton(
                   onPressed: isAuthBusy ? null : onRequestPasswordReset,
-                  child: const Text('Olvid� mi password'),
+                  child: const Text('Olvidé mi password'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -608,14 +608,14 @@ class _PasswordRecoveryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Recuperaci�n de password',
+              'Recuperación de password',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Ingres� tu nueva password (m�nimo 8 caracteres).',
+              'Ingresá tu nueva password (mínimo 8 caracteres).',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 10),

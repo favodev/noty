@@ -16,7 +16,7 @@ List<NotificationItem> buildMockNotifications() {
       id: 'n-002',
       appName: 'Gmail',
       title: 'Build failed en CI',
-      body: 'Pipeline main-android fallo en step test',
+      body: 'Pipeline main-android falló en step test',
       receivedAt: now.subtract(const Duration(minutes: 21)),
       isUnread: true,
     ),
