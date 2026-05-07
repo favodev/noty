@@ -7,6 +7,7 @@ import 'package:noty/features/feed/domain/notification_item.dart';
 import 'package:noty/features/feed/presentation/feed_page.dart';
 import 'package:noty/features/shell/data/noty_shell_service.dart';
 import 'package:noty/features/settings/presentation/settings_page.dart';
+import 'package:noty/features/settings/presentation/app_selection_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotyShell extends StatefulWidget {
@@ -232,6 +233,18 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     }
   }
 
+  void _openAppSelection() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => AppSelectionPage(
+          onGetInstalledApps: _shellService.getInstalledApps,
+          onGetMonitoredPackages: _shellService.getMonitoredPackages,
+          onSavePackages: _shellService.updateMonitoredPackages,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openPasswordRecoveryFlow() async {
     if (!mounted || _isRecoveryFlowOpen) {
       return;
@@ -296,6 +309,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         onRequestPasswordReset: _requestPasswordReset,
         onUpdateRecoveredPassword: _updateRecoveredPassword,
         onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
+        onOpenAppSelection: _openAppSelection,
         onThemeModeChanged: widget.onThemeChanged,
       ),
     ];

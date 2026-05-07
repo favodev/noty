@@ -98,6 +98,23 @@ class NativeNotificationsBridge {
     }
   }
 
+  Future<List<String>> getMonitoredPackages() async {
+    if (!_supportsNativeBridge) {
+      return const <String>[];
+    }
+
+    try {
+      final result = await _channel.invokeMethod<List<dynamic>>('getMonitoredPackages');
+      if (result == null) return const <String>[];
+      
+      return result.map((dynamic item) => item.toString()).toList();
+    } on MissingPluginException {
+      return const <String>[];
+    } on PlatformException {
+      return const <String>[];
+    }
+  }
+
   bool get _supportsNativeBridge => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   NotificationItem? _mapRawToItem(Map<Object?, Object?> raw) {

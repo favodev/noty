@@ -25,6 +25,16 @@ object AppFilterStore {
         prefs.edit().putStringSet(KEY_MONITORED_PACKAGES, packages.toSet()).apply()
     }
 
+    fun getMonitoredPackages(context: Context): List<String> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, null)
+        
+        if (monitored == null || monitored.isEmpty()) {
+            return emptyList()
+        }
+        return monitored.toList()
+    }
+
     fun getInstalledApps(context: Context): List<Map<String, String>> {
         val pm = context.packageManager
         val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)

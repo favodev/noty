@@ -17,6 +17,7 @@ class SettingsPage extends StatefulWidget {
     required this.onRequestPasswordReset,
     required this.onUpdateRecoveredPassword,
     required this.onOpenNotificationSettings,
+    required this.onOpenAppSelection,
     this.onThemeModeChanged,
   });
 
@@ -33,6 +34,7 @@ class SettingsPage extends StatefulWidget {
   final Future<String?> Function(String email) onRequestPasswordReset;
   final Future<String?> Function(String newPassword) onUpdateRecoveredPassword;
   final Future<void> Function() onOpenNotificationSettings;
+  final void Function() onOpenAppSelection;
   final void Function(ThemeMode mode)? onThemeModeChanged;
 
   @override
@@ -163,13 +165,14 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 20),
         const _SectionHeader(
           title: 'Acceso a notificaciones',
-          subtitle: 'Verific� que Android est� entregando las notificaciones a Noty.',
+          subtitle: 'Configurá qué apps escuchar y los permisos de Android.',
           icon: Icons.notifications_outlined,
         ),
         const SizedBox(height: 12),
         _NotificationPermissionCard(
           isEnabled: widget.notificationListenerEnabled,
           onOpenSettings: widget.onOpenNotificationSettings,
+          onOpenAppSelection: widget.onOpenAppSelection,
         ),
       ],
     );
@@ -643,10 +646,12 @@ class _NotificationPermissionCard extends StatelessWidget {
   const _NotificationPermissionCard({
     required this.isEnabled,
     required this.onOpenSettings,
+    required this.onOpenAppSelection,
   });
 
   final bool isEnabled;
   final VoidCallback onOpenSettings;
+  final VoidCallback onOpenAppSelection;
 
   @override
   Widget build(BuildContext context) {
@@ -654,72 +659,75 @@ class _NotificationPermissionCard extends StatelessWidget {
     final colorScheme = theme.colorScheme;
     final statusColor = isEnabled ? colorScheme.primary : colorScheme.tertiary;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      isEnabled ? Icons.check_circle : Icons.warning,
+                      color: statusColor,
+                      size: 20,
+                    ),
                   ),
-                  child: Icon(
-                    isEnabled ? Icons.check_circle : Icons.warning,
-                    color: statusColor,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        isEnabled ? 'Captura activa' : 'Permiso pendiente',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          isEnabled ? 'Captura activa' : 'Permiso pendiente',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isEnabled
-                            ? 'Android ya est� entregando notificaciones a Noty.'
-                            : 'Necesit�s habilitar el acceso para empezar a guardar notificaciones.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                        const SizedBox(height: 4),
+                        Text(
+                          isEnabled
+                              ? 'Android ya está entregando notificaciones a Noty.'
+                              : 'Necesitás habilitar el acceso para empezar a guardar notificaciones.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                _StatusBadge(
-                  label: isEnabled ? 'Activo' : 'Inactivo',
-                  color: statusColor,
-                ),
-              ],
-            ),
-            if (!isEnabled) ...<Widget>[
-              const SizedBox(height: 14),
+                ],
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton.icon(
+                child: FilledButton.tonalIcon(
                   onPressed: onOpenSettings,
-                  icon: const Icon(Icons.open_in_new_rounded),
-                  label: const Text('Habilitar acceso'),
+                  icon: const Icon(Icons.settings_applications),
+                  label: const Text('Abrir ajustes de Android'),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.tonalIcon(
+                  onPressed: onOpenAppSelection,
+                  icon: const Icon(Icons.filter_list),
+                  label: const Text('Seleccionar apps a monitorear'),
                 ),
               ),
             ],
-          ],
+          ),
         ),
-      ),
-    );
+      );
   }
 }
 

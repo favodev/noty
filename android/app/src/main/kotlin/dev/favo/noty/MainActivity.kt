@@ -42,6 +42,10 @@ class MainActivity : FlutterActivity() {
 						result.success(null)
 					}
 
+					"getMonitoredPackages" -> {
+						result.success(AppFilterStore.getMonitoredPackages(applicationContext))
+					}
+
 					else -> result.notImplemented()
 				}
 			}

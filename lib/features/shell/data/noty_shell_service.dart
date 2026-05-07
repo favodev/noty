@@ -201,6 +201,18 @@ class NotyShellService {
     await _nativeBridge.openNotificationListenerSettings();
   }
 
+  Future<List<Map<String, String>>> getInstalledApps() async {
+    return _nativeBridge.getInstalledApps();
+  }
+
+  Future<List<String>> getMonitoredPackages() async {
+    return _nativeBridge.getMonitoredPackages();
+  }
+
+  Future<void> updateMonitoredPackages(List<String> packages) async {
+    await _nativeBridge.updateMonitoredPackages(packages);
+  }
+
   void _ensureSupabaseInitialized(bool initialized) {
     if (!initialized) {
       throw const _ShellValidationException('Supabase no esta inicializado.');
