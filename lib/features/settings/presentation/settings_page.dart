@@ -18,6 +18,7 @@ class SettingsPage extends StatefulWidget {
     required this.onUpdateRecoveredPassword,
     required this.onOpenNotificationSettings,
     required this.onOpenAppSelection,
+    required this.onClearHistory,
     this.onThemeModeChanged,
   });
 
@@ -35,6 +36,7 @@ class SettingsPage extends StatefulWidget {
   final Future<String?> Function(String newPassword) onUpdateRecoveredPassword;
   final Future<void> Function() onOpenNotificationSettings;
   final void Function() onOpenAppSelection;
+  final Future<void> Function() onClearHistory;
   final void Function(ThemeMode mode)? onThemeModeChanged;
 
   @override
@@ -71,10 +73,20 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
       children: <Widget>[
-        const _SettingsHeroCard(
-          title: 'Ajustes',
-          description: 'Gestioná tu cuenta, apariencia y permisos desde un solo lugar.',
+        // Permisos de Notificaciones (Prioridad Alta)
+const SizedBox(height: 20),
+        const _SectionHeader(
+          title: 'Acceso a notificaciones',
+          subtitle: 'Configurá qué apps escuchar y los permisos de Android.',
+          icon: Icons.notifications_outlined,
         ),
+        const SizedBox(height: 12),
+        _NotificationPermissionCard(
+          isEnabled: widget.notificationListenerEnabled,
+          onOpenSettings: widget.onOpenNotificationSettings,
+          onOpenAppSelection: widget.onOpenAppSelection,
+        ),
+
         const SizedBox(height: 20),
         const _SectionHeader(
           title: 'Cuenta',
@@ -164,17 +176,23 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 20),
         const _SectionHeader(
-          title: 'Acceso a notificaciones',
-          subtitle: 'Configurá qué apps escuchar y los permisos de Android.',
-          icon: Icons.notifications_outlined,
+          title: 'Datos locales',
+          subtitle: 'Gestioná el espacio que ocupa tu historial.',
+          icon: Icons.storage_rounded,
         ),
         const SizedBox(height: 12),
-        _NotificationPermissionCard(
-          isEnabled: widget.notificationListenerEnabled,
-          onOpenSettings: widget.onOpenNotificationSettings,
-          onOpenAppSelection: widget.onOpenAppSelection,
+        _DataManagementCard(
+          isAuthBusy: widget.isAuthBusy,
+          onClearHistory: () => _handleAuthAction(
+            () async {
+              await widget.onClearHistory();
+              return null;
+            },
+            successMessage: 'Historial local borrado',
+          ),
         ),
-      ],
+
+              ],
     );
   }
 
@@ -195,65 +213,6 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 }
 
-class _SettingsHeroCard extends StatelessWidget {
-  const _SettingsHeroCard({
-    required this.title,
-    required this.description,
-  });
-
-  final String title;
-  final String description;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.45)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(Icons.tune_rounded, color: colorScheme.primary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({
@@ -794,5 +753,86 @@ class _StatusBadge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+
+class _DataManagementCard extends StatelessWidget {
+  const _DataManagementCard({
+    required this.isAuthBusy,
+    required this.onClearHistory,
+  });
+
+  final bool isAuthBusy;
+  final VoidCallback onClearHistory;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Borrar historial local',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Elimina todas las notificaciones guardadas en este dispositivo. Esto no afectará tu respaldo en Supabase si ya se sincronizaron.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: isAuthBusy ? null : () => _confirmClear(context),
+                icon: const Icon(Icons.delete_sweep_rounded),
+                label: const Text('Vaciar base de datos'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error,
+                  side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmClear(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Borrar historial?'),
+        content: const Text('Vas a eliminar todas las notificaciones locales. Solo podrás recuperarlas si iniciaste sesión y se sincronizaron en la nube. ¿Estás seguro?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            child: const Text('Sí, borrar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      onClearHistory();
+    }
   }
 }

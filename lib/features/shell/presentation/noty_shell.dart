@@ -245,6 +245,11 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _clearHistory() async {
+    await _shellService.clearLocalHistory();
+    await _loadNotifications();
+  }
+
   Future<void> _openPasswordRecoveryFlow() async {
     if (!mounted || _isRecoveryFlowOpen) {
       return;
@@ -289,12 +294,14 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
   List<Widget> _buildTabs() {
     return <Widget>[
-      FeedPage(
-        notifications: _notifications,
-        isLoading: _isLoadingNotifications,
-        errorMessage: _notificationsError,
-        onRefreshRequested: _loadNotifications,
-      ),
+        FeedPage(
+          notifications: _notifications,
+          isLoading: _isLoadingNotifications,
+          errorMessage: _notificationsError,
+          isNotificationListenerEnabled: _isNotificationListenerEnabled,
+          onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
+          onRefreshRequested: _loadNotifications,
+        ),
       SettingsPage(
         supabaseState: widget.supabaseState,
         currentThemeMode: widget.currentThemeMode,
@@ -310,6 +317,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         onUpdateRecoveredPassword: _updateRecoveredPassword,
         onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
         onOpenAppSelection: _openAppSelection,
+        onClearHistory: _clearHistory,
         onThemeModeChanged: widget.onThemeChanged,
       ),
     ];

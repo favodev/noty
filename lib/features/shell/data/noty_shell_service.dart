@@ -213,6 +213,10 @@ class NotyShellService {
     await _nativeBridge.updateMonitoredPackages(packages);
   }
 
+  Future<void> clearLocalHistory() async {
+    await _repository.deleteAll();
+  }
+
   void _ensureSupabaseInitialized(bool initialized) {
     if (!initialized) {
       throw const _ShellValidationException('Supabase no está inicializado.');

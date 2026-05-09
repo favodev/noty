@@ -46,6 +46,11 @@ class LocalNotificationsRepository {
     );
   }
 
+  Future<void> deleteAll() async {
+    final database = await _db;
+    await database.delete(_tableName);
+  }
+
   Future<List<NotificationItem>> getPendingSync({int limit = 50}) async {
     final database = await _db;
     final rows = await database.query(

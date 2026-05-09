@@ -6,14 +6,18 @@ class FeedPage extends StatefulWidget {
     super.key,
     required this.notifications,
     required this.isLoading,
-    required this.onRefreshRequested,
     this.errorMessage,
+    required this.isNotificationListenerEnabled,
+    required this.onOpenNotificationSettings,
+    required this.onRefreshRequested,
   });
 
   final List<NotificationItem> notifications;
   final bool isLoading;
-  final Future<void> Function() onRefreshRequested;
   final String? errorMessage;
+  final bool isNotificationListenerEnabled;
+  final VoidCallback onOpenNotificationSettings;
+  final Future<void> Function() onRefreshRequested;
 
   @override
   State<FeedPage> createState() => _FeedPageState();
@@ -67,6 +71,34 @@ class _FeedPageState extends State<FeedPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          if (!widget.isNotificationListenerEnabled) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: colorScheme.error.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_rounded, color: colorScheme.error),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Falta permiso para leer notificaciones.',
+                      style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: widget.onOpenNotificationSettings,
+                    style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                    child: const Text('Dar permiso'),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Text(
             'Historial reciente',
             style: theme.textTheme.headlineSmall?.copyWith(
