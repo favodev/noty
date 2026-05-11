@@ -113,17 +113,12 @@ class _FeedPageState extends State<FeedPage> {
                 ),
           ),
           const SizedBox(height: 16),
-          TextField(
-            onChanged: (value) {
-              setState(() {
-                _query = value;
-              });
-            },
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.search),
-              hintText: 'Buscar por app, titulo o contenido...',
-              suffixIcon: hasQuery
-                  ? IconButton(
+          SearchBar(
+            hintText: 'Buscar por app, título o contenido...',
+            leading: const Icon(Icons.search),
+            trailing: hasQuery
+                ? [
+                    IconButton(
                       tooltip: 'Limpiar búsqueda',
                       onPressed: () {
                         setState(() {
@@ -132,7 +127,81 @@ class _FeedPageState extends State<FeedPage> {
                       },
                       icon: const Icon(Icons.close),
                     )
-                  : null,
+                  ]
+                : null,
+            onChanged: (value) {
+              setState(() {
+                _query = value;
+              });
+            },
+            elevation: WidgetStateProperty.all(0),
+            backgroundColor: WidgetStateProperty.all(colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: <Widget>[
+              Text(
+                '${items.length} resultado${items.length == 1 ? '' : 's'}',
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              if (hasQuery || _selectedApp != 'Todas' || _onlyUnread)
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _query = '';
+                      _selectedApp = 'Todas';
+                      _onlyUnread = false;
+                    });
+                  },
+                  child: const Text('Limpiar filtros'),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: <Widget>[
+                FilterChip(
+                  selected: _onlyUnread,
+                  onSelected: (value) {
+                    setState(() {
+                      _onlyUnread = value;
+                    });
+                  },
+                  avatar: Icon(
+                    _onlyUnread ? Icons.mark_email_unread_rounded : Icons.drafts_outlined,
+                    size: 16,
+                  ),
+                  label: const Text('No leídas'),
+                ),
+                if (_appFilters.length > 1) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    width: 1,
+                    height: 24,
+                    color: colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                for (final appName in _appFilters)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(appName),
+                      selected: _selectedApp == appName,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedApp = appName;
+                        });
+                      },
+                    ),
+                  ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
