@@ -325,9 +325,9 @@ class _DataManagementCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('?Borrar historial?'),
+        title: const Text('Borrar historial?'),
         content: const Text(
-          'Vas a eliminar todas las notificaciones locales. Si no exportaste antes, no se pueden recuperar. ?Est?s seguro?',
+          'Vas a eliminar todas las notificaciones locales. Si no exportaste antes, no se pueden recuperar. Estas seguro?',
         ),
         actions: <Widget>[
           TextButton(
