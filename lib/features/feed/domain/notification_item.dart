@@ -6,9 +6,6 @@ class NotificationItem {
     required this.body,
     required this.receivedAt,
     required this.isUnread,
-    this.syncState = NotificationSyncState.pending,
-    this.syncAttempts = 0,
-    this.syncError,
   });
 
   final String id;
@@ -17,12 +14,6 @@ class NotificationItem {
   final String body;
   final DateTime receivedAt;
   final bool isUnread;
-  final String syncState;
-  final int syncAttempts;
-  final String? syncError;
-
-  bool get needsSync =>
-      syncState == NotificationSyncState.pending || syncState == NotificationSyncState.error;
 
   bool matchesQuery(String query) {
     final normalized = query.trim().toLowerCase();
@@ -34,12 +25,26 @@ class NotificationItem {
         title.toLowerCase().contains(normalized) ||
         body.toLowerCase().contains(normalized);
   }
-}
 
-class NotificationSyncState {
-  const NotificationSyncState._();
+  Map<String, Object?> toJson() {
+    return <String, Object?>{
+      'id': id,
+      'appName': appName,
+      'title': title,
+      'body': body,
+      'receivedAt': receivedAt.toIso8601String(),
+      'isUnread': isUnread,
+    };
+  }
 
-  static const String pending = 'pending';
-  static const String synced = 'synced';
-  static const String error = 'error';
+  factory NotificationItem.fromJson(Map<String, Object?> json) {
+    return NotificationItem(
+      id: json['id'] as String,
+      appName: json['appName'] as String,
+      title: json['title'] as String,
+      body: json['body'] as String,
+      receivedAt: DateTime.parse(json['receivedAt'] as String),
+      isUnread: json['isUnread'] as bool? ?? false,
+    );
+  }
 }

@@ -205,59 +205,6 @@ class _FeedPageState extends State<FeedPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: <Widget>[
-              Text(
-                '${items.length} resultado${items.length == 1 ? '' : 's'}',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              if (hasQuery || _selectedApp != 'Todas' || _onlyUnread)
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _query = '';
-                      _selectedApp = 'Todas';
-                      _onlyUnread = false;
-                    });
-                  },
-                  child: const Text('Limpiar filtros'),
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: <Widget>[
-              for (final appName in _appFilters)
-                ChoiceChip(
-                  label: Text(appName),
-                  selected: _selectedApp == appName,
-                  onSelected: (_) {
-                    setState(() {
-                      _selectedApp = appName;
-                    });
-                  },
-                ),
-              FilterChip(
-                selected: _onlyUnread,
-                onSelected: (value) {
-                  setState(() {
-                    _onlyUnread = value;
-                  });
-                },
-                avatar: Icon(
-                  _onlyUnread ? Icons.mark_email_unread_rounded : Icons.drafts_outlined,
-                  size: 16,
-                ),
-                label: const Text('No leídas'),
-              ),
-            ],
-          ),
           const SizedBox(height: 16),
           Expanded(
             child: AnimatedOpacity(

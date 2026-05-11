@@ -46,63 +46,28 @@ class LocalNotificationsRepository {
     );
   }
 
-  Future<void> deleteAll() async {
-    final database = await _db;
-    await database.delete(_tableName);
-  }
-
-  Future<List<NotificationItem>> getPendingSync({int limit = 50}) async {
-    final database = await _db;
-    final rows = await database.query(
-      _tableName,
-      where: 'sync_state IN (?, ?)',
-      whereArgs: const <String>[NotificationSyncState.pending, NotificationSyncState.error],
-      orderBy: 'received_at ASC',
-      limit: limit,
-    );
-
-    return rows.map(_fromMap).toList();
-  }
-
-  Future<void> markAsSynced(List<String> ids) async {
-    if (ids.isEmpty) {
+  Future<void> importMany(List<NotificationItem> items) async {
+    if (items.isEmpty) {
       return;
     }
 
     final database = await _db;
     final batch = database.batch();
 
-    for (final id in ids) {
-      batch.update(
+    for (final item in items) {
+      batch.insert(
         _tableName,
-        <String, Object?>{
-          'sync_state': NotificationSyncState.synced,
-          'sync_error': null,
-        },
-        where: 'id = ?',
-        whereArgs: <Object?>[id],
+        _toMap(item),
+        conflictAlgorithm: ConflictAlgorithm.replace,
       );
     }
 
     await batch.commit(noResult: true);
   }
 
-  Future<void> markAsSyncFailed(String id, String errorMessage) async {
+  Future<void> deleteAll() async {
     final database = await _db;
-    await database.rawUpdate(
-      '''
-      UPDATE $_tableName
-      SET sync_state = ?,
-          sync_error = ?,
-          sync_attempts = sync_attempts + 1
-      WHERE id = ?
-      ''',
-      <Object?>[
-        NotificationSyncState.error,
-        errorMessage,
-        id,
-      ],
-    );
+    await database.delete(_tableName);
   }
 
   Future<void> seedIfEmpty(List<NotificationItem> seedItems) async {
@@ -115,18 +80,7 @@ class LocalNotificationsRepository {
       return;
     }
 
-    final database = await _db;
-    final batch = database.batch();
-
-    for (final item in seedItems) {
-      batch.insert(
-        _tableName,
-        _toMap(item),
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-    }
-
-    await batch.commit(noResult: true);
+    await importMany(seedItems);
   }
 
   Future<Database> get _db async {
@@ -140,7 +94,7 @@ class LocalNotificationsRepository {
 
     return openDatabase(
       dbPath,
-      version: 2,
+      version: 3,
       onCreate: (database, _) async {
         await database.execute('''
           CREATE TABLE $_tableName (
@@ -149,22 +103,30 @@ class LocalNotificationsRepository {
             title TEXT NOT NULL,
             body TEXT NOT NULL,
             received_at INTEGER NOT NULL,
-            is_unread INTEGER NOT NULL,
-            sync_state TEXT NOT NULL DEFAULT '${NotificationSyncState.pending}',
-            sync_attempts INTEGER NOT NULL DEFAULT 0,
-            sync_error TEXT
+            is_unread INTEGER NOT NULL
           )
         ''');
       },
       onUpgrade: (database, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          await database.execute(
-            "ALTER TABLE $_tableName ADD COLUMN sync_state TEXT NOT NULL DEFAULT '${NotificationSyncState.pending}'",
-          );
-          await database.execute(
-            'ALTER TABLE $_tableName ADD COLUMN sync_attempts INTEGER NOT NULL DEFAULT 0',
-          );
-          await database.execute('ALTER TABLE $_tableName ADD COLUMN sync_error TEXT');
+        if (oldVersion < 3) {
+          await database.execute('''
+            CREATE TABLE ${_tableName}_local_only (
+              id TEXT PRIMARY KEY,
+              app_name TEXT NOT NULL,
+              title TEXT NOT NULL,
+              body TEXT NOT NULL,
+              received_at INTEGER NOT NULL,
+              is_unread INTEGER NOT NULL
+            )
+          ''');
+          await database.execute('''
+            INSERT OR REPLACE INTO ${_tableName}_local_only
+              (id, app_name, title, body, received_at, is_unread)
+            SELECT id, app_name, title, body, received_at, is_unread
+            FROM $_tableName
+          ''');
+          await database.execute('DROP TABLE $_tableName');
+          await database.execute('ALTER TABLE ${_tableName}_local_only RENAME TO $_tableName');
         }
       },
     );
@@ -187,9 +149,6 @@ class LocalNotificationsRepository {
       body: row['body']! as String,
       receivedAt: DateTime.fromMillisecondsSinceEpoch(row['received_at']! as int),
       isUnread: (row['is_unread']! as int) == 1,
-      syncState: (row['sync_state'] as String?) ?? NotificationSyncState.pending,
-      syncAttempts: (row['sync_attempts'] as int?) ?? 0,
-      syncError: row['sync_error'] as String?,
     );
   }
 
@@ -201,9 +160,6 @@ class LocalNotificationsRepository {
       'body': item.body,
       'received_at': item.receivedAt.millisecondsSinceEpoch,
       'is_unread': item.isUnread ? 1 : 0,
-      'sync_state': item.syncState,
-      'sync_attempts': item.syncAttempts,
-      'sync_error': item.syncError,
     };
   }
 }

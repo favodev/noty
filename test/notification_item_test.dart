@@ -18,22 +18,6 @@ void main() {
       expect(item.title, 'New message');
       expect(item.body, 'Hello from test');
       expect(item.isUnread, true);
-      expect(item.syncState, NotificationSyncState.pending);
-    });
-
-    test('needsSync returns true when pending', () {
-      final item = _createItem(syncState: NotificationSyncState.pending);
-      expect(item.needsSync, true);
-    });
-
-    test('needsSync returns true when error', () {
-      final item = _createItem(syncState: NotificationSyncState.error);
-      expect(item.needsSync, true);
-    });
-
-    test('needsSync returns false when synced', () {
-      final item = _createItem(syncState: NotificationSyncState.synced);
-      expect(item.needsSync, false);
     });
 
     group('matchesQuery', () {
@@ -64,13 +48,17 @@ void main() {
         expect(item.matchesQuery('foo'), false);
       });
     });
-  });
 
-  group('NotificationSyncState', () {
-    test('has correct values', () {
-      expect(NotificationSyncState.pending, 'pending');
-      expect(NotificationSyncState.synced, 'synced');
-      expect(NotificationSyncState.error, 'error');
+    test('serializes to and from JSON', () {
+      final item = _createItem();
+      final restored = NotificationItem.fromJson(item.toJson());
+
+      expect(restored.id, item.id);
+      expect(restored.appName, item.appName);
+      expect(restored.title, item.title);
+      expect(restored.body, item.body);
+      expect(restored.receivedAt, item.receivedAt);
+      expect(restored.isUnread, item.isUnread);
     });
   });
 }
@@ -81,7 +69,6 @@ NotificationItem _createItem({
   String title = 'Test Title',
   String body = 'Test body',
   bool isUnread = false,
-  String syncState = NotificationSyncState.pending,
 }) {
   return NotificationItem(
     id: id,
@@ -90,6 +77,5 @@ NotificationItem _createItem({
     body: body,
     receivedAt: DateTime(2024, 1, 1),
     isUnread: isUnread,
-    syncState: syncState,
   );
 }

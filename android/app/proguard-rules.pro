@@ -10,7 +10,7 @@
 -keep class com.google.firebase.** { *; }
 -keep class com.google.android.gms.** { *; }
 
-# Supabase / Network models
+# JSON / local data models
 -keepattributes *Annotation*, Signature, InnerClasses
 -keepclassmembers class * {
     @com.google.gson.annotations.SerializedName <fields>;
