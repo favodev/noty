@@ -122,8 +122,8 @@ class _NotificationPermissionCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         isEnabled
-                            ? 'Android ya est? entregando notificaciones a Noty.'
-                            : 'Habilit? el acceso para empezar a guardar notificaciones.',
+                            ? 'Android ya esta entregando notificaciones a Noty.'
+                            : 'Habilita el acceso para empezar a guardar notificaciones.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -187,7 +187,7 @@ class _DataPortabilityCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Cre? un archivo JSON para respaldar tu historial local o importalo en otro tel?fono.',
+              'Crea un archivo JSON para respaldar tu historial local o importalo en otro teléfono.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
