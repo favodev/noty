@@ -37,7 +37,7 @@ class SettingsPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Todo queda guardado solo en este tel?fono. Para cambiar de m?vil, export? e import? tu historial.',
+          'Todo queda guardado solo en este telefono. Para cambiar de movil, exporta e importa tu historial.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -340,7 +340,7 @@ class _DataManagementCard extends StatelessWidget {
               backgroundColor: Theme.of(context).colorScheme.error,
               foregroundColor: Theme.of(context).colorScheme.onError,
             ),
-            child: const Text('S?, borrar'),
+            child: const Text('Si, borrar'),
           ),
         ],
       ),
