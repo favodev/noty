@@ -37,7 +37,7 @@ class SettingsPage extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Todo queda guardado solo en este telefono. Para cambiar de movil, exporta e importa tu historial.',
+          'Todo queda guardado solo en este teléfono. Para cambiar de móvil, exporta e importa tu historial.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -122,7 +122,7 @@ class _NotificationPermissionCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         isEnabled
-                            ? 'Android ya esta entregando notificaciones a Noty.'
+                            ? 'Android ya está entregando notificaciones a Noty.'
                             : 'Habilita el acceso para empezar a guardar notificaciones.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
@@ -187,7 +187,7 @@ class _DataPortabilityCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Crea un archivo JSON para respaldar tu historial local o importalo en otro teléfono.',
+              'Crea un archivo JSON para respaldar tu historial local o impórtalo en otro teléfono.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -325,9 +325,9 @@ class _DataManagementCard extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Borrar historial?'),
+        title: const Text('¿Borrar historial?'),
         content: const Text(
-          'Vas a eliminar todas las notificaciones locales. Si no exportaste antes, no se pueden recuperar. Estas seguro?',
+          'Vas a eliminar todas las notificaciones locales. Si no exportaste antes, no se pueden recuperar. ¿Estás seguro?',
         ),
         actions: <Widget>[
           TextButton(

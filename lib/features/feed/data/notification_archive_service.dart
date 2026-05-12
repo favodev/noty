@@ -33,7 +33,7 @@ class NotificationArchiveService {
     await SharePlus.instance.share(
       ShareParams(
         files: <XFile>[XFile(file.path, mimeType: 'application/json')],
-        subject: 'Exportaci?n de Noty',
+        subject: 'Exportación de Noty',
         text: 'Historial local exportado desde Noty.',
       ),
     );
@@ -56,16 +56,16 @@ class NotificationArchiveService {
     final raw = await File(path).readAsString();
     final decoded = jsonDecode(raw);
     if (decoded is! Map<String, Object?>) {
-      throw const FormatException('El archivo no tiene un formato v?lido.');
+      throw const FormatException('El archivo no tiene un formato válido.');
     }
 
     if (decoded['app'] != 'noty') {
-      throw const FormatException('Este archivo no parece ser una exportaci?n de Noty.');
+      throw const FormatException('Este archivo no parece ser una exportación de Noty.');
     }
 
     final notifications = decoded['notifications'];
     if (notifications is! List) {
-      throw const FormatException('La exportaci?n no contiene notificaciones.');
+      throw const FormatException('La exportación no contiene notificaciones.');
     }
 
     final items = notifications

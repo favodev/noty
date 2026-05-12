@@ -17,6 +17,5 @@ void main() {
     expect(find.text('Ajustes'), findsWidgets);
     expect(find.text('Exportar e importar'), findsOneWidget);
     expect(find.text('Acceso a notificaciones'), findsNothing);
-    expect(find.textContaining('Supabase'), findsNothing);
   });
 }

@@ -406,8 +406,8 @@ class _EmptyFeed extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               hasQuery
-                  ? 'Probá con otro término o limpiá los filtros.'
-                  : 'Cuando llegue actividad nueva, la vas a ver acá.',
+                  ? 'Prueba con otro término o limpia los filtros.'
+                  : 'Cuando llegue actividad nueva, la vas a ver aquí.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.onSurfaceVariant,

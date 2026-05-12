@@ -107,7 +107,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
 
   Future<void> _exportHistory() async {
     await _runDataAction(
-      successMessage: 'Exportaci?n lista para compartir o guardar.',
+      successMessage: 'Exportación lista para compartir o guardar.',
       action: _shellService.exportHistory,
     );
   }
@@ -118,7 +118,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       action: () async {
         final importedCount = await _shellService.importHistory();
         if (importedCount == null) {
-          return 'Importaci?n cancelada.';
+          return 'Importación cancelada.';
         }
         await _loadNotifications();
         return 'Se importaron $importedCount notificaciones.';
