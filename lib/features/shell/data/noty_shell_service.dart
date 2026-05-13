@@ -29,6 +29,8 @@ class NotyShellService {
   final NativeNotificationsBridge _nativeBridge;
   final NotificationArchiveService _archiveService;
 
+  Stream<void> get onNewNotification => _nativeBridge.onNewNotification;
+
   Future<void> dispose() => _repository.dispose();
 
   Future<NotyShellLoadResult> loadNotifications({

@@ -4,6 +4,14 @@ import 'package:noty/features/feed/domain/notification_item.dart';
 
 class NativeNotificationsBridge {
   static const MethodChannel _channel = MethodChannel('noty/native_notifications');
+  static const EventChannel _eventChannel = EventChannel('noty/native_events');
+
+  Stream<void> get onNewNotification {
+    if (!_supportsNativeBridge) {
+      return const Stream<void>.empty();
+    }
+    return _eventChannel.receiveBroadcastStream().map((_) => null);
+  }
 
   Future<List<NotificationItem>> drainPendingNotifications() async {
     if (!_supportsNativeBridge) {

@@ -25,6 +25,7 @@ class NotyShell extends StatefulWidget {
 
 class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   final NotyShellService _shellService = NotyShellService();
+  StreamSubscription<void>? _newNotificationSubscription;
 
   int _index = 0;
   bool _isLoadingNotifications = true;
@@ -40,10 +41,17 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_loadNotifications());
+    
+    _newNotificationSubscription = _shellService.onNewNotification.listen((_) {
+      if (mounted) {
+        unawaited(_loadNotifications(silent: true));
+      }
+    });
   }
 
   @override
   void dispose() {
+    unawaited(_newNotificationSubscription?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_shellService.dispose());
     super.dispose();
@@ -52,29 +60,31 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_loadNotifications());
+      unawaited(_loadNotifications(silent: true));
     }
   }
 
   Future<void> _deleteNotification(String id) async {
     await _shellService.deleteNotification(id);
-    await _loadNotifications();
+    await _loadNotifications(silent: true);
   }
 
   Future<void> _markAsRead(String id) async {
     await _shellService.markNotificationAsRead(id);
-    await _loadNotifications();
+    await _loadNotifications(silent: true);
   }
 
-  Future<void> _loadNotifications() async {
+  Future<void> _loadNotifications({bool silent = false}) async {
     if (!mounted) {
       return;
     }
 
-    setState(() {
-      _isLoadingNotifications = true;
-      _notificationsError = null;
-    });
+    if (!silent) {
+      setState(() {
+        _isLoadingNotifications = true;
+        _notificationsError = null;
+      });
+    }
 
     final result = await _shellService.loadNotifications(
       enableLocalPersistence: widget.enableLocalPersistence,
