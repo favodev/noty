@@ -56,6 +56,16 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _deleteNotification(String id) async {
+    await _shellService.deleteNotification(id);
+    await _loadNotifications();
+  }
+
+  Future<void> _markAsRead(String id) async {
+    await _shellService.markNotificationAsRead(id);
+    await _loadNotifications();
+  }
+
   Future<void> _loadNotifications() async {
     if (!mounted) {
       return;
@@ -165,6 +175,8 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         isNotificationListenerEnabled: _isNotificationListenerEnabled,
         onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
         onRefreshRequested: _loadNotifications,
+        onDeleteNotification: _deleteNotification,
+        onMarkAsRead: _markAsRead,
       ),
       SettingsPage(
         currentThemeMode: widget.currentThemeMode,

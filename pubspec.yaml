@@ -69,7 +69,7 @@ flutter_launcher_icons:
   ios: true
   image_path: "assets/icon_noty.png"
   adaptive_icon_background: "#070015"
-  adaptive_icon_foreground: "assets/icon_noty.png"
+  adaptive_icon_foreground: "assets/icon_noty_foreground.png"
   web:
     generate: true
   windows:

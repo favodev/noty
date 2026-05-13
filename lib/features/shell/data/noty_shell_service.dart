@@ -43,7 +43,6 @@ class NotyShellService {
 
     try {
       await _repository.initialize();
-      await _repository.seedIfEmpty(buildMockNotifications());
 
       final listenerEnabled = await _nativeBridge.isNotificationListenerEnabled();
       final nativeNotifications = await _nativeBridge.drainPendingNotifications();
@@ -81,6 +80,14 @@ class NotyShellService {
 
   Future<void> updateMonitoredPackages(List<String> packages) async {
     await _nativeBridge.updateMonitoredPackages(packages);
+  }
+
+  Future<void> deleteNotification(String id) async {
+    await _repository.deleteItem(id);
+  }
+
+  Future<void> markNotificationAsRead(String id) async {
+    await _repository.markAsRead(id);
   }
 
   Future<void> clearLocalHistory() async {

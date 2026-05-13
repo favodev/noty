@@ -10,6 +10,8 @@ class FeedPage extends StatefulWidget {
     required this.isNotificationListenerEnabled,
     required this.onOpenNotificationSettings,
     required this.onRefreshRequested,
+    required this.onDeleteNotification,
+    required this.onMarkAsRead,
   });
 
   final List<NotificationItem> notifications;
@@ -18,6 +20,8 @@ class FeedPage extends StatefulWidget {
   final bool isNotificationListenerEnabled;
   final VoidCallback onOpenNotificationSettings;
   final Future<void> Function() onRefreshRequested;
+  final Future<void> Function(String id) onDeleteNotification;
+  final Future<void> Function(String id) onMarkAsRead;
 
   @override
   State<FeedPage> createState() => _FeedPageState();
@@ -233,7 +237,11 @@ class _FeedPageState extends State<FeedPage> {
                                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                                   itemBuilder: (context, index) {
                                     final item = items[index];
-                                    return _NotificationCard(item: item);
+                                    return _NotificationCard(
+                                      item: item,
+                                      onMarkAsRead: widget.onMarkAsRead,
+                                      onDelete: widget.onDeleteNotification,
+                                    );
                                   },
                                 ),
                               ),
@@ -247,9 +255,15 @@ class _FeedPageState extends State<FeedPage> {
 }
 
 class _NotificationCard extends StatelessWidget {
-  const _NotificationCard({required this.item});
+  const _NotificationCard({
+    required this.item,
+    required this.onMarkAsRead,
+    required this.onDelete,
+  });
 
   final NotificationItem item;
+  final Future<void> Function(String id) onMarkAsRead;
+  final Future<void> Function(String id) onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -317,25 +331,40 @@ class _NotificationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Row(
-                    children: <Widget>[
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: labelColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
+                          color: labelColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           item.appName,
                           style: theme.textTheme.labelSmall?.copyWith(
-                                color: labelColor,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            color: labelColor,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      if (item.isUnread) ...<Widget>[
-                        const SizedBox(width: 8),
-                        Icon(Icons.circle, size: 8, color: colorScheme.tertiary),
-                      ],
+                      Row(
+                        children: [
+                          if (item.isUnread)
+                            IconButton(
+                              icon: const Icon(Icons.mark_email_read_outlined, size: 20),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => onMarkAsRead(item.id),
+                            ),
+                          const SizedBox(width: 16),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => onDelete(item.id),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ],

@@ -65,6 +65,25 @@ class LocalNotificationsRepository {
     await batch.commit(noResult: true);
   }
 
+  Future<void> deleteItem(String id) async {
+    final database = await _db;
+    await database.delete(
+      _tableName,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<void> markAsRead(String id) async {
+    final database = await _db;
+    await database.update(
+      _tableName,
+      {'is_unread': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> deleteAll() async {
     final database = await _db;
     await database.delete(_tableName);
