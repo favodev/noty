@@ -10,13 +10,12 @@ object AppFilterStore {
 
     fun isPackageMonitored(context: Context, packageName: String): Boolean {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, null)
         
-        // Si no hay configuracion, por defecto escuchamos todo (o podria ser al reves, pero para MVP todo es mejor)
-        if (monitored == null || monitored.isEmpty()) {
+        if (!prefs.contains(KEY_MONITORED_PACKAGES)) {
             return true
         }
-
+        
+        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
         return monitored.contains(packageName)
     }
 
@@ -27,11 +26,13 @@ object AppFilterStore {
 
     fun getMonitoredPackages(context: Context): List<String> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, null)
-        
-        if (monitored == null || monitored.isEmpty()) {
+        if (!prefs.contains(KEY_MONITORED_PACKAGES)) {
+            // Return an empty list or null? Since it returns List<String>, let's return emptyList, 
+            // but the UI won't know it's "not configured". The UI might need to handle this.
+            // Actually, returning emptyList() when not configured is fine, or we can just leave it as is.
             return emptyList()
         }
+        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
         return monitored.toList()
     }
 

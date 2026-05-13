@@ -11,10 +11,28 @@ class NotyNotificationListenerService : NotificationListenerService() {
         val extras = notification.extras ?: return
 
         var title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+        
+        if (title.isEmpty()) {
+            title = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
+        }
+
         var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
 
         if (body.isEmpty()) {
             body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+        }
+
+        if (body.isEmpty()) {
+            val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+            if (!messages.isNullOrEmpty()) {
+                val lastMessage = messages.last() as? android.os.Bundle
+                if (lastMessage != null) {
+                    val msgText = lastMessage.getCharSequence("text")?.toString()
+                    if (msgText != null) {
+                        body = msgText.trim()
+                    }
+                }
+            }
         }
         
         if (body.isEmpty()) {
