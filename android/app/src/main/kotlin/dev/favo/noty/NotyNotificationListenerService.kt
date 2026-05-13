@@ -10,8 +10,23 @@ class NotyNotificationListenerService : NotificationListenerService() {
         val notification = statusBarNotification.notification ?: return
         val extras = notification.extras ?: return
 
-        val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-        val body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        var title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+        var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+
+        if (body.isEmpty()) {
+            body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+        }
+        
+        if (body.isEmpty()) {
+            val textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+            if (!textLines.isNullOrEmpty()) {
+                body = textLines.joinToString("\n") { it?.toString()?.trim().orEmpty() }
+            }
+        }
+        
+        if (body.isEmpty()) {
+            body = notification.tickerText?.toString()?.trim().orEmpty()
+        }
 
         if (title.isEmpty() && body.isEmpty()) {
             return
