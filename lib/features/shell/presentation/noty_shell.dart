@@ -26,11 +26,13 @@ class NotyShell extends StatefulWidget {
 class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   final NotyShellService _shellService = NotyShellService();
   StreamSubscription<void>? _newNotificationSubscription;
+  Timer? _notificationDrainTimer;
 
   int _index = 0;
   bool _isLoadingNotifications = true;
   bool _isNotificationListenerEnabled = false;
   bool _isDataBusy = false;
+  bool _isRefreshingNotifications = false;
   String? _notificationsError;
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
@@ -41,16 +43,25 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_loadNotifications());
-    
+
     _newNotificationSubscription = _shellService.onNewNotification.listen((_) {
       if (mounted) {
         unawaited(_loadNotifications(silent: true));
       }
     });
+
+    if (widget.enableLocalPersistence) {
+      _notificationDrainTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+        if (mounted) {
+          unawaited(_loadNotifications(silent: true));
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    _notificationDrainTimer?.cancel();
     unawaited(_newNotificationSubscription?.cancel());
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_shellService.dispose());
@@ -79,6 +90,12 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       return;
     }
 
+    if (_isRefreshingNotifications) {
+      return;
+    }
+
+    _isRefreshingNotifications = true;
+
     if (!silent) {
       setState(() {
         _isLoadingNotifications = true;
@@ -86,20 +103,24 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       });
     }
 
-    final result = await _shellService.loadNotifications(
-      enableLocalPersistence: widget.enableLocalPersistence,
-    );
+    try {
+      final result = await _shellService.loadNotifications(
+        enableLocalPersistence: widget.enableLocalPersistence,
+      );
 
-    if (!mounted) {
-      return;
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _notifications = result.notifications;
+        _isLoadingNotifications = false;
+        _isNotificationListenerEnabled = result.listenerEnabled;
+        _notificationsError = result.errorMessage;
+      });
+    } finally {
+      _isRefreshingNotifications = false;
     }
-
-    setState(() {
-      _notifications = result.notifications;
-      _isLoadingNotifications = false;
-      _isNotificationListenerEnabled = result.listenerEnabled;
-      _notificationsError = result.errorMessage;
-    });
   }
 
   void _openAppSelection() {
@@ -171,7 +192,9 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         setState(() {
           _isDataBusy = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -183,7 +206,8 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         isLoading: _isLoadingNotifications,
         errorMessage: _notificationsError,
         isNotificationListenerEnabled: _isNotificationListenerEnabled,
-        onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
+        onOpenNotificationSettings:
+            _shellService.openNotificationListenerSettings,
         onRefreshRequested: _loadNotifications,
         onDeleteNotification: _deleteNotification,
         onMarkAsRead: _markAsRead,
@@ -192,7 +216,8 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         currentThemeMode: widget.currentThemeMode,
         notificationListenerEnabled: _isNotificationListenerEnabled,
         isDataBusy: _isDataBusy,
-        onOpenNotificationSettings: _shellService.openNotificationListenerSettings,
+        onOpenNotificationSettings:
+            _shellService.openNotificationListenerSettings,
         onOpenAppSelection: _openAppSelection,
         onExportHistory: _exportHistory,
         onImportHistory: _importHistory,
@@ -213,20 +238,20 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
         transitionBuilder: (child, animation) {
-          final slide = Tween<Offset>(
-            begin: const Offset(0.03, 0),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic));
+          final slide =
+              Tween<Offset>(
+                begin: const Offset(0.03, 0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              );
 
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(position: slide, child: child),
           );
         },
-        child: KeyedSubtree(
-          key: ValueKey<int>(_index),
-          child: tabs[_index],
-        ),
+        child: KeyedSubtree(key: ValueKey<int>(_index), child: tabs[_index]),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

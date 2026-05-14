@@ -15,12 +15,12 @@ object AppFilterStore {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
         if (!prefs.contains(KEY_MONITORED_PACKAGES)) {
-            return isUserFacingNotificationSource(context, packageName)
+            return isAllowedDefaultNotificationSource(context, packageName)
         }
         
         val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
         if (monitored.isEmpty()) {
-            return isUserFacingNotificationSource(context, packageName)
+            return isAllowedDefaultNotificationSource(context, packageName)
         }
 
         return monitored.contains(packageName)
@@ -81,18 +81,20 @@ object AppFilterStore {
         return result.sortedBy { it["appName"]?.lowercase() }
     }
 
-    private fun isUserFacingNotificationSource(context: Context, packageName: String): Boolean {
+    private fun isAllowedDefaultNotificationSource(context: Context, packageName: String): Boolean {
         if (packageName == context.packageName) {
             return false
         }
 
-        val pm = context.packageManager
-        return try {
-            val appInfo = pm.getApplicationInfo(packageName, 0)
-            isVisibleInPicker(pm, appInfo)
-        } catch (_: PackageManager.NameNotFoundException) {
-            false
+        if (packageName == "android") {
+            return false
         }
+
+        if (packageName.startsWith("com.android.")) {
+            return false
+        }
+
+        return true
     }
 
     private fun isVisibleInPicker(pm: PackageManager, appInfo: android.content.pm.ApplicationInfo): Boolean {
