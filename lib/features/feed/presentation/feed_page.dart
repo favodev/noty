@@ -46,14 +46,17 @@ class _FeedPageState extends State<FeedPage> {
   }
 
   List<String> get _appFilters {
-    final apps = <String>{for (final item in widget.notifications) item.appName};
+    final apps = <String>{
+      for (final item in widget.notifications) item.appName,
+    };
     final sortedApps = apps.toList()..sort();
     return <String>['Todas', ...sortedApps];
   }
 
   List<NotificationItem> get _visibleItems {
     final filtered = widget.notifications.where((item) {
-      final matchesApp = _selectedApp == 'Todas' || item.appName == _selectedApp;
+      final matchesApp =
+          _selectedApp == 'Todas' || item.appName == _selectedApp;
       final matchesUnread = !_onlyUnread || item.isUnread;
       final matchesQuery = item.matchesQuery(_query);
       return matchesApp && matchesUnread && matchesQuery;
@@ -82,7 +85,9 @@ class _FeedPageState extends State<FeedPage> {
               decoration: BoxDecoration(
                 color: colorScheme.errorContainer,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: colorScheme.error.withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: colorScheme.error.withValues(alpha: 0.5),
+                ),
               ),
               child: Row(
                 children: [
@@ -91,12 +96,17 @@ class _FeedPageState extends State<FeedPage> {
                   Expanded(
                     child: Text(
                       'Falta permiso para leer notificaciones.',
-                      style: TextStyle(color: colorScheme.onErrorContainer, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: colorScheme.onErrorContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   TextButton(
                     onPressed: widget.onOpenNotificationSettings,
-                    style: TextButton.styleFrom(foregroundColor: colorScheme.error),
+                    style: TextButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                    ),
                     child: const Text('Dar permiso'),
                   ),
                 ],
@@ -106,15 +116,15 @@ class _FeedPageState extends State<FeedPage> {
           Text(
             'Historial reciente',
             style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Todas las notificaciones capturadas por Noty.',
             style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+              color: colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           SearchBar(
@@ -130,7 +140,7 @@ class _FeedPageState extends State<FeedPage> {
                         });
                       },
                       icon: const Icon(Icons.close),
-                    )
+                    ),
                   ]
                 : null,
             onChanged: (value) {
@@ -139,7 +149,9 @@ class _FeedPageState extends State<FeedPage> {
               });
             },
             elevation: WidgetStateProperty.all(0),
-            backgroundColor: WidgetStateProperty.all(colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)),
+            backgroundColor: WidgetStateProperty.all(
+              colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -178,7 +190,9 @@ class _FeedPageState extends State<FeedPage> {
                     });
                   },
                   avatar: Icon(
-                    _onlyUnread ? Icons.mark_email_unread_rounded : Icons.drafts_outlined,
+                    _onlyUnread
+                        ? Icons.mark_email_unread_rounded
+                        : Icons.drafts_outlined,
                     size: 16,
                   ),
                   label: const Text('No leídas'),
@@ -220,31 +234,32 @@ class _FeedPageState extends State<FeedPage> {
                 child: widget.isLoading
                     ? const _LoadingFeed()
                     : widget.errorMessage != null
-                        ? _FeedError(
-                            message: widget.errorMessage!,
-                            onRetry: widget.onRefreshRequested,
-                          )
-                        : items.isEmpty
-                            ? _EmptyFeed(hasQuery: hasQuery)
-                            : RefreshIndicator(
-                                onRefresh: widget.onRefreshRequested,
-                                child: ListView.separated(
-                                  key: ValueKey<String>(
-                                    '${_selectedApp}_${_onlyUnread}_${items.length}_$_query',
-                                  ),
-                                  padding: const EdgeInsets.only(bottom: 24),
-                                  itemCount: items.length,
-                                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                                  itemBuilder: (context, index) {
-                                    final item = items[index];
-                                    return _NotificationCard(
-                                      item: item,
-                                      onMarkAsRead: widget.onMarkAsRead,
-                                      onDelete: widget.onDeleteNotification,
-                                    );
-                                  },
-                                ),
-                              ),
+                    ? _FeedError(
+                        message: widget.errorMessage!,
+                        onRetry: widget.onRefreshRequested,
+                      )
+                    : items.isEmpty
+                    ? _EmptyFeed(hasQuery: hasQuery)
+                    : RefreshIndicator(
+                        onRefresh: widget.onRefreshRequested,
+                        child: ListView.separated(
+                          key: ValueKey<String>(
+                            '${_selectedApp}_${_onlyUnread}_${items.length}_$_query',
+                          ),
+                          padding: const EdgeInsets.only(bottom: 24),
+                          itemCount: items.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            return _NotificationCard(
+                              item: item,
+                              onMarkAsRead: widget.onMarkAsRead,
+                              onDelete: widget.onDeleteNotification,
+                            );
+                          },
+                        ),
+                      ),
               ),
             ),
           ),
@@ -268,112 +283,139 @@ class _NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    final labelColor = item.isUnread ? colorScheme.tertiary : colorScheme.onSurfaceVariant;
+    final labelColor = item.isUnread
+        ? colorScheme.tertiary
+        : colorScheme.onSurfaceVariant;
     final iconBackground = item.isUnread
         ? colorScheme.tertiaryContainer
         : colorScheme.surfaceContainerHighest;
     final theme = Theme.of(context);
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: iconBackground,
-                borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openDetails(context),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: iconBackground,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.notifications_active_outlined,
+                  size: 20,
+                  color: item.isUnread
+                      ? colorScheme.tertiary
+                      : colorScheme.onSurfaceVariant,
+                ),
               ),
-              child: Icon(
-                Icons.notifications_active_outlined,
-                size: 20,
-                color: item.isUnread ? colorScheme.tertiary : colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                              ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        _formatRelativeTime(item.receivedAt),
-                        style: theme.textTheme.labelMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.body,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: labelColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          item.appName,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: labelColor,
-                            fontWeight: FontWeight.w700,
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Text(
+                          _formatRelativeTime(item.receivedAt),
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.body,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.9),
                       ),
-                      Row(
-                        children: [
-                          if (item.isUnread)
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: labelColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            item.appName,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: labelColor,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            if (item.isUnread)
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.mark_email_read_outlined,
+                                  size: 20,
+                                ),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () => onMarkAsRead(item.id),
+                              ),
+                            const SizedBox(width: 16),
                             IconButton(
-                              icon: const Icon(Icons.mark_email_read_outlined, size: 20),
+                              icon: const Icon(Icons.delete_outline, size: 20),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
-                              onPressed: () => onMarkAsRead(item.id),
+                              onPressed: () => onDelete(item.id),
                             ),
-                          const SizedBox(width: 16),
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 20),
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: () => onDelete(item.id),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _openDetails(BuildContext context) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => _NotificationDetailsSheet(item: item),
+    );
+
+    if (item.isUnread) {
+      await onMarkAsRead(item.id);
+    }
   }
 
   static String _formatRelativeTime(DateTime dateTime) {
@@ -393,10 +435,85 @@ class _NotificationCard extends StatelessWidget {
   }
 }
 
+class _NotificationDetailsSheet extends StatelessWidget {
+  const _NotificationDetailsSheet({required this.item});
+
+  final NotificationItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          20 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.72,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        item.appName,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _NotificationCard._formatRelativeTime(item.receivedAt),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SelectableText(
+                  item.title,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SelectableText(
+                  item.body,
+                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed({
-    this.hasQuery = false,
-  });
+  const _EmptyFeed({this.hasQuery = false});
 
   final bool hasQuery;
 
@@ -419,14 +536,18 @@ class _EmptyFeed extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                hasQuery ? Icons.search_off_rounded : Icons.notifications_off_outlined,
+                hasQuery
+                    ? Icons.search_off_rounded
+                    : Icons.notifications_off_outlined,
                 size: 30,
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              hasQuery ? 'No encontramos coincidencias.' : 'Todavía no hay notificaciones.',
+              hasQuery
+                  ? 'No encontramos coincidencias.'
+                  : 'Todavía no hay notificaciones.',
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -462,10 +583,7 @@ class _LoadingFeed extends StatelessWidget {
 }
 
 class _FeedError extends StatelessWidget {
-  const _FeedError({
-    required this.message,
-    required this.onRetry,
-  });
+  const _FeedError({required this.message, required this.onRetry});
 
   final String message;
   final Future<void> Function() onRetry;

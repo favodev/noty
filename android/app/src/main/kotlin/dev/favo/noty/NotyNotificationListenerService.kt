@@ -37,27 +37,14 @@ class NotyNotificationListenerService : NotificationListenerService() {
             title = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
         }
 
-        var body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        var body = extractMessagingBody(extras)
 
         if (body.isEmpty()) {
-            body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+            body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         }
 
         if (body.isEmpty()) {
-            try {
-                val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
-                if (!messages.isNullOrEmpty()) {
-                    val lastMessage = messages.last()
-                    if (lastMessage is android.os.Bundle) {
-                        val msgText = lastMessage.getCharSequence("text")?.toString()
-                        if (msgText != null) {
-                            body = msgText.trim()
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                // Ignore exception on specific extra extraction.
-            }
+            body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
         }
 
         if (body.isEmpty()) {
@@ -106,5 +93,27 @@ class NotyNotificationListenerService : NotificationListenerService() {
         val intent = android.content.Intent("dev.favo.noty.NEW_NOTIFICATION")
             .setPackage(packageName)
         sendBroadcast(intent)
+    }
+
+    private fun extractMessagingBody(extras: android.os.Bundle): String {
+        return try {
+            val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
+            if (messages.isNullOrEmpty()) {
+                return ""
+            }
+
+            messages.mapNotNull { rawMessage ->
+                val message = rawMessage as? android.os.Bundle ?: return@mapNotNull null
+                val text = message.getCharSequence("text")?.toString()?.trim().orEmpty()
+                if (text.isEmpty()) {
+                    return@mapNotNull null
+                }
+
+                val sender = message.getCharSequence("sender")?.toString()?.trim().orEmpty()
+                if (sender.isEmpty()) text else "$sender: $text"
+            }.distinct().joinToString("\n")
+        } catch (_: Exception) {
+            ""
+        }
     }
 }
