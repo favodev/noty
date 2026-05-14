@@ -16,11 +16,20 @@ object AppFilterStore {
         }
         
         val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
+        if (monitored.isEmpty()) {
+            return true
+        }
+
         return monitored.contains(packageName)
     }
 
     fun updateMonitoredPackages(context: Context, packages: List<String>) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (packages.isEmpty()) {
+            prefs.edit().remove(KEY_MONITORED_PACKAGES).apply()
+            return
+        }
+
         prefs.edit().putStringSet(KEY_MONITORED_PACKAGES, packages.toSet()).apply()
     }
 

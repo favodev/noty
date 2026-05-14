@@ -3,14 +3,16 @@ import 'package:flutter/services.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 
 class NativeNotificationsBridge {
-  static const MethodChannel _channel = MethodChannel('noty/native_notifications');
+  static const MethodChannel _channel = MethodChannel(
+    'noty/native_notifications',
+  );
   static const EventChannel _eventChannel = EventChannel('noty/native_events');
 
   Stream<void> get onNewNotification {
     if (!_supportsNativeBridge) {
       return const Stream<void>.empty();
     }
-    return _eventChannel.receiveBroadcastStream().map((_) => null);
+    return _eventChannel.receiveBroadcastStream().map<void>((_) {});
   }
 
   Future<List<NotificationItem>> drainPendingNotifications() async {
@@ -19,7 +21,9 @@ class NativeNotificationsBridge {
     }
 
     try {
-      final rawItems = await _channel.invokeMethod<List<dynamic>>('drainPendingNotifications');
+      final rawItems = await _channel.invokeMethod<List<dynamic>>(
+        'drainPendingNotifications',
+      );
       final result = <NotificationItem>[];
 
       for (final raw in rawItems ?? const <dynamic>[]) {
@@ -47,7 +51,10 @@ class NativeNotificationsBridge {
     }
 
     try {
-      return await _channel.invokeMethod<bool>('isNotificationListenerEnabled') ?? false;
+      return await _channel.invokeMethod<bool>(
+            'isNotificationListenerEnabled',
+          ) ??
+          false;
     } on MissingPluginException {
       return false;
     } on PlatformException {
@@ -75,9 +82,11 @@ class NativeNotificationsBridge {
     }
 
     try {
-      final result = await _channel.invokeMethod<List<dynamic>>('getInstalledApps');
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'getInstalledApps',
+      );
       if (result == null) return const <Map<String, String>>[];
-      
+
       return result.map((dynamic item) {
         final map = item as Map<dynamic, dynamic>;
         return {
@@ -98,7 +107,9 @@ class NativeNotificationsBridge {
     }
 
     try {
-      await _channel.invokeMethod<void>('updateMonitoredPackages', {'packages': packages});
+      await _channel.invokeMethod<void>('updateMonitoredPackages', {
+        'packages': packages,
+      });
     } on MissingPluginException {
       // No-op in unsupported targets.
     } on PlatformException {
@@ -112,9 +123,11 @@ class NativeNotificationsBridge {
     }
 
     try {
-      final result = await _channel.invokeMethod<List<dynamic>>('getMonitoredPackages');
+      final result = await _channel.invokeMethod<List<dynamic>>(
+        'getMonitoredPackages',
+      );
       if (result == null) return const <String>[];
-      
+
       return result.map((dynamic item) => item.toString()).toList();
     } on MissingPluginException {
       return const <String>[];
@@ -123,7 +136,8 @@ class NativeNotificationsBridge {
     }
   }
 
-  bool get _supportsNativeBridge => !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  bool get _supportsNativeBridge =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   NotificationItem? _mapRawToItem(Map<Object?, Object?> raw) {
     final title = _asString(raw['title']).trim();
@@ -134,10 +148,14 @@ class NativeNotificationsBridge {
     }
 
     final packageName = _asString(raw['appPackage']);
-    final receivedAtEpochMs = _asInt(raw['receivedAtEpochMs']) ?? DateTime.now().millisecondsSinceEpoch;
+    final receivedAtEpochMs =
+        _asInt(raw['receivedAtEpochMs']) ??
+        DateTime.now().millisecondsSinceEpoch;
 
     return NotificationItem(
-      id: _asString(raw['id']).ifEmpty(() => 'native-${DateTime.now().microsecondsSinceEpoch}'),
+      id: _asString(
+        raw['id'],
+      ).ifEmpty(() => 'native-${DateTime.now().microsecondsSinceEpoch}'),
       appName: _displayNameFromPackage(packageName),
       title: title,
       body: body,
