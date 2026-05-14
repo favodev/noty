@@ -1,7 +1,6 @@
 package dev.favo.noty
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 
 object AppFilterStore {
@@ -51,17 +50,16 @@ object AppFilterStore {
         val result = mutableListOf<Map<String, String>>()
 
         for (appInfo in packages) {
-            // Omitimos algunas apps super basicas del sistema que solo meten ruido si queremos,
-            // pero la validacion basica es si se puede lanzar
-            if (pm.getLaunchIntentForPackage(appInfo.packageName) != null) {
-                val appName = pm.getApplicationLabel(appInfo).toString()
-                result.add(
-                    mapOf(
-                        "packageName" to appInfo.packageName,
-                        "appName" to appName
-                    )
-                )
+            val appName = pm.getApplicationLabel(appInfo).toString().ifBlank {
+                appInfo.packageName
             }
+
+            result.add(
+                mapOf(
+                    "packageName" to appInfo.packageName,
+                    "appName" to appName
+                )
+            )
         }
         
         // Sort por nombre

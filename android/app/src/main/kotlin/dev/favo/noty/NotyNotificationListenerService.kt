@@ -9,7 +9,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
         super.onListenerConnected()
 
         try {
-            activeNotifications?.forEach(::captureNotification)
+            activeNotifications?.forEach { captureNotification(it, dedupeActiveNotification = true) }
         } catch (e: Exception) {
             e.printStackTrace()
         }
@@ -17,14 +17,17 @@ class NotyNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         try {
-            captureNotification(sbn ?: return)
+            captureNotification(sbn ?: return, dedupeActiveNotification = false)
         } catch (e: Exception) {
             // Prevenir que el servicio de Android crashee por completo.
             e.printStackTrace()
         }
     }
 
-    private fun captureNotification(statusBarNotification: StatusBarNotification) {
+    private fun captureNotification(
+        statusBarNotification: StatusBarNotification,
+        dedupeActiveNotification: Boolean,
+    ) {
         val notification = statusBarNotification.notification ?: return
         val extras = notification.extras ?: return
 
@@ -82,10 +85,16 @@ class NotyNotificationListenerService : NotificationListenerService() {
             return
         }
 
+        val captureId = if (dedupeActiveNotification) {
+            "${statusBarNotification.key}:${statusBarNotification.postTime}"
+        } else {
+            "${statusBarNotification.key}:${System.currentTimeMillis()}"
+        }
+
         NotificationCaptureStore.append(
             context = applicationContext,
             payload = mapOf(
-                "id" to statusBarNotification.key,
+                "id" to captureId,
                 "appPackage" to statusBarNotification.packageName,
                 "title" to title,
                 "body" to body,
@@ -95,6 +104,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
         )
 
         val intent = android.content.Intent("dev.favo.noty.NEW_NOTIFICATION")
+            .setPackage(packageName)
         sendBroadcast(intent)
     }
 }

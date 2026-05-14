@@ -32,7 +32,7 @@ class _AppSelectionPageState extends State<AppSelectionPage> {
     try {
       final apps = await widget.onGetInstalledApps();
       final monitored = await widget.onGetMonitoredPackages();
-      
+
       setState(() {
         _apps = apps;
         if (monitored.isEmpty) {
@@ -50,7 +50,18 @@ class _AppSelectionPageState extends State<AppSelectionPage> {
   }
 
   Future<void> _save() async {
-    await widget.onSavePackages(_selectedPackages.toList());
+    if (_selectedPackages.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona al menos una app.')),
+      );
+      return;
+    }
+
+    final allSelected =
+        _selectedPackages.length == _apps.length && _apps.isNotEmpty;
+    await widget.onSavePackages(
+      allSelected ? const <String>[] : _selectedPackages.toList(),
+    );
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Preferencias de apps guardadas')),
@@ -71,8 +82,9 @@ class _AppSelectionPageState extends State<AppSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final allSelected = _selectedPackages.length == _apps.length && _apps.isNotEmpty;
-    
+    final allSelected =
+        _selectedPackages.length == _apps.length && _apps.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Filtro de Apps'),
@@ -87,46 +99,53 @@ class _AppSelectionPageState extends State<AppSelectionPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _apps.isEmpty
-              ? const Center(child: Text('No se encontraron apps.'))
-              : Column(
-                  children: [
-                    CheckboxListTile(
-                      title: const Text('Seleccionar todas', style: TextStyle(fontWeight: FontWeight.bold)),
-                      value: allSelected,
-                      onChanged: _toggleAll,
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                    const Divider(height: 1),
-                    Expanded(
-                      child: ListView.builder(
-                        itemCount: _apps.length,
-                        itemBuilder: (context, index) {
-                          final app = _apps[index];
-                          final packageName = app['packageName']!;
-                          final appName = app['appName'] ?? packageName;
-                          final isSelected = _selectedPackages.contains(packageName);
-
-                          return CheckboxListTile(
-                            title: Text(appName),
-                            subtitle: Text(packageName, style: const TextStyle(fontSize: 11)),
-                            value: isSelected,
-                            controlAffinity: ListTileControlAffinity.leading,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                if (value == true) {
-                                  _selectedPackages.add(packageName);
-                                } else {
-                                  _selectedPackages.remove(packageName);
-                                }
-                              });
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                  ],
+          ? const Center(child: Text('No se encontraron apps.'))
+          : Column(
+              children: [
+                CheckboxListTile(
+                  title: const Text(
+                    'Seleccionar todas',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  value: allSelected,
+                  onChanged: _toggleAll,
+                  controlAffinity: ListTileControlAffinity.leading,
                 ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _apps.length,
+                    itemBuilder: (context, index) {
+                      final app = _apps[index];
+                      final packageName = app['packageName']!;
+                      final appName = app['appName'] ?? packageName;
+                      final isSelected = _selectedPackages.contains(
+                        packageName,
+                      );
+
+                      return CheckboxListTile(
+                        title: Text(appName),
+                        subtitle: Text(
+                          packageName,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        value: isSelected,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            if (value == true) {
+                              _selectedPackages.add(packageName);
+                            } else {
+                              _selectedPackages.remove(packageName);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
-
