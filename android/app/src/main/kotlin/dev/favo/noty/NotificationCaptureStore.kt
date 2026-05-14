@@ -3,6 +3,7 @@ package dev.favo.noty
 import android.content.ComponentName
 import android.content.Context
 import android.provider.Settings
+import android.service.notification.NotificationListenerService
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -33,7 +34,21 @@ object NotificationCaptureStore {
         val flat = component.flattenToString()
         val short = component.flattenToShortString()
 
-        return enabledListeners.contains(flat) || enabledListeners.contains(short)
+        val isEnabled = enabledListeners.contains(flat) || enabledListeners.contains(short)
+        if (isEnabled) {
+            requestListenerRebind(context)
+        }
+
+        return isEnabled
+    }
+
+    private fun requestListenerRebind(context: Context) {
+        try {
+            val component = ComponentName(context, NotyNotificationListenerService::class.java)
+            NotificationListenerService.requestRebind(component)
+        } catch (_: Throwable) {
+            // Algunos Android/MIUI ignoran el rebind aunque el permiso siga activo.
+        }
     }
 
     private fun migrateIfNeeded(context: Context) {

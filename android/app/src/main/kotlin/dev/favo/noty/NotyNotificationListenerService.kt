@@ -28,26 +28,31 @@ class NotyNotificationListenerService : NotificationListenerService() {
         statusBarNotification: StatusBarNotification,
         dedupeActiveNotification: Boolean,
     ) {
-        val notification = statusBarNotification.notification ?: return
-        val extras = notification.extras ?: return
+        val sourcePackage = statusBarNotification.packageName
+        if (sourcePackage == applicationContext.packageName) {
+            return
+        }
 
-        var title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+        val notification = statusBarNotification.notification
+        val extras = notification.extras
+
+        var title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
 
         if (title.isEmpty()) {
-            title = extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
+            title = extras?.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
         }
 
-        var body = extractMessagingBody(extras)
+        var body = if (extras == null) "" else extractMessagingBody(extras)
 
         if (body.isEmpty()) {
-            body = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
-        }
-
-        if (body.isEmpty()) {
-            body = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+            body = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         }
 
         if (body.isEmpty()) {
+            body = extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+        }
+
+        if (body.isEmpty() && extras != null) {
             try {
                 val textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
                 if (!textLines.isNullOrEmpty()) {
@@ -62,14 +67,10 @@ class NotyNotificationListenerService : NotificationListenerService() {
             body = notification.tickerText?.toString()?.trim().orEmpty()
         }
 
-        // Fallback si no hay título ni cuerpo pero es una app monitoreada (ej. foto en WhatsApp sin texto).
+        // Fallback si no hay título ni cuerpo (ej. multimedia o apps que ocultan extras).
         if (title.isEmpty() && body.isEmpty()) {
             body = "[Notificación sin texto o multimedia]"
-            title = statusBarNotification.packageName
-        }
-
-        if (!AppFilterStore.isPackageMonitored(applicationContext, statusBarNotification.packageName)) {
-            return
+            title = sourcePackage
         }
 
         val captureId = if (dedupeActiveNotification) {
@@ -82,7 +83,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
             context = applicationContext,
             payload = mapOf(
                 "id" to captureId,
-                "appPackage" to statusBarNotification.packageName,
+                "appPackage" to sourcePackage,
                 "title" to title,
                 "body" to body,
                 "receivedAtEpochMs" to statusBarNotification.postTime,

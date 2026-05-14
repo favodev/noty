@@ -7,7 +7,7 @@ object AppFilterStore {
     private const val PREFS_NAME = "noty_app_filters"
     private const val KEY_MONITORED_PACKAGES = "monitored_packages"
     private const val KEY_FILTER_SCHEMA_VERSION = "filter_schema_version"
-    private const val CURRENT_FILTER_SCHEMA_VERSION = 2
+    private const val CURRENT_FILTER_SCHEMA_VERSION = 3
 
     fun isPackageMonitored(context: Context, packageName: String): Boolean {
         migrateOldFilterIfNeeded(context)
@@ -18,12 +18,7 @@ object AppFilterStore {
             return isAllowedDefaultNotificationSource(context, packageName)
         }
         
-        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
-        if (monitored.isEmpty()) {
-            return isAllowedDefaultNotificationSource(context, packageName)
-        }
-
-        return monitored.contains(packageName)
+        return isAllowedDefaultNotificationSource(context, packageName)
     }
 
     fun updateMonitoredPackages(context: Context, packages: List<String>) {
