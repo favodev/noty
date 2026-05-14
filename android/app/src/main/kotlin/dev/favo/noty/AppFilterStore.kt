@@ -6,8 +6,12 @@ import android.content.pm.PackageManager
 object AppFilterStore {
     private const val PREFS_NAME = "noty_app_filters"
     private const val KEY_MONITORED_PACKAGES = "monitored_packages"
+    private const val KEY_FILTER_SCHEMA_VERSION = "filter_schema_version"
+    private const val CURRENT_FILTER_SCHEMA_VERSION = 2
 
     fun isPackageMonitored(context: Context, packageName: String): Boolean {
+        migrateOldFilterIfNeeded(context)
+
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
         if (!prefs.contains(KEY_MONITORED_PACKAGES)) {
@@ -23,21 +27,28 @@ object AppFilterStore {
     }
 
     fun updateMonitoredPackages(context: Context, packages: List<String>) {
+        migrateOldFilterIfNeeded(context)
+
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (packages.isEmpty()) {
-            prefs.edit().remove(KEY_MONITORED_PACKAGES).apply()
+            prefs.edit()
+                .remove(KEY_MONITORED_PACKAGES)
+                .putInt(KEY_FILTER_SCHEMA_VERSION, CURRENT_FILTER_SCHEMA_VERSION)
+                .apply()
             return
         }
 
-        prefs.edit().putStringSet(KEY_MONITORED_PACKAGES, packages.toSet()).apply()
+        prefs.edit()
+            .putStringSet(KEY_MONITORED_PACKAGES, packages.toSet())
+            .putInt(KEY_FILTER_SCHEMA_VERSION, CURRENT_FILTER_SCHEMA_VERSION)
+            .apply()
     }
 
     fun getMonitoredPackages(context: Context): List<String> {
+        migrateOldFilterIfNeeded(context)
+
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         if (!prefs.contains(KEY_MONITORED_PACKAGES)) {
-            // Return an empty list or null? Since it returns List<String>, let's return emptyList, 
-            // but the UI won't know it's "not configured". The UI might need to handle this.
-            // Actually, returning emptyList() when not configured is fine, or we can just leave it as is.
             return emptyList()
         }
         val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
@@ -86,5 +97,19 @@ object AppFilterStore {
 
     private fun isVisibleInPicker(pm: PackageManager, appInfo: android.content.pm.ApplicationInfo): Boolean {
         return pm.getLaunchIntentForPackage(appInfo.packageName) != null
+    }
+
+    private fun migrateOldFilterIfNeeded(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val schemaVersion = prefs.getInt(KEY_FILTER_SCHEMA_VERSION, 0)
+
+        if (schemaVersion >= CURRENT_FILTER_SCHEMA_VERSION) {
+            return
+        }
+
+        prefs.edit()
+            .remove(KEY_MONITORED_PACKAGES)
+            .putInt(KEY_FILTER_SCHEMA_VERSION, CURRENT_FILTER_SCHEMA_VERSION)
+            .apply()
     }
 }
