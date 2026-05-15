@@ -1,6 +1,7 @@
 package dev.favo.noty
 
 import android.app.Notification
+import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import java.lang.ref.WeakReference
@@ -21,6 +22,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
         activeService = WeakReference(this)
 
         try {
+            migrateNotificationFilterIfNeeded()
             captureActiveNotifications()
         } catch (e: Exception) {
             NotificationCaptureStore.markError(applicationContext, e)
@@ -51,6 +53,9 @@ class NotyNotificationListenerService : NotificationListenerService() {
     ) {
         val sourcePackage = statusBarNotification.packageName
         if (sourcePackage == applicationContext.packageName) {
+            return
+        }
+        if (NotificationCaptureStore.isIgnored(applicationContext, statusBarNotification.key)) {
             return
         }
 
@@ -94,6 +99,11 @@ class NotyNotificationListenerService : NotificationListenerService() {
             title = sourcePackage
         }
 
+        val hasOnlyFallbackContent = title == sourcePackage && body == "[Notificación sin texto o multimedia]"
+        if (shouldSkipNoise(sourcePackage, hasOnlyFallbackContent)) {
+            return
+        }
+
         val captureId = if (dedupeActiveNotification) {
             "${statusBarNotification.key}:${statusBarNotification.postTime}"
         } else {
@@ -120,6 +130,36 @@ class NotyNotificationListenerService : NotificationListenerService() {
     private fun captureActiveNotifications() {
         NotificationCaptureStore.markListenerConnected(applicationContext)
         activeNotifications?.forEach { captureNotification(it, dedupeActiveNotification = true) }
+    }
+
+    private fun migrateNotificationFilterIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return
+        }
+
+        try {
+            migrateNotificationFilter(
+                FLAG_FILTER_TYPE_CONVERSATIONS or
+                    FLAG_FILTER_TYPE_ALERTING or
+                    FLAG_FILTER_TYPE_SILENT or
+                    FLAG_FILTER_TYPE_ONGOING,
+                emptyList(),
+            )
+        } catch (e: Exception) {
+            NotificationCaptureStore.markError(applicationContext, e)
+        }
+    }
+
+    private fun shouldSkipNoise(packageName: String, hasOnlyFallbackContent: Boolean): Boolean {
+        if (packageName == "android" || packageName.startsWith("com.android.")) {
+            return true
+        }
+
+        if (packageName == "com.miui.notification") {
+            return true
+        }
+
+        return packageName.startsWith("com.miui.") && hasOnlyFallbackContent
     }
 
     private fun extractMessagingBody(extras: android.os.Bundle): String {

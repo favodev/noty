@@ -16,6 +16,7 @@ object NotificationCaptureStore {
     private const val KEY_POSTED_COUNT = "posted_count"
     private const val KEY_CAPTURED_COUNT = "captured_count"
     private const val KEY_LAST_ERROR = "last_error"
+    private const val KEY_IGNORED_NOTIFICATION_KEYS = "ignored_notification_keys"
 
     fun append(context: Context, payload: Map<String, Any?>) {
         migrateIfNeeded(context)
@@ -81,6 +82,28 @@ object NotificationCaptureStore {
             "capturedCount" to prefs.getInt(KEY_CAPTURED_COUNT, 0),
             "lastError" to prefs.getString(KEY_LAST_ERROR, ""),
         )
+    }
+
+    fun ignoreNotification(context: Context, notificationId: String) {
+        val key = notificationId.substringBeforeLast(":", notificationId).trim()
+        if (key.isEmpty()) {
+            return
+        }
+
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val ignoredKeys = prefs.getStringSet(KEY_IGNORED_NOTIFICATION_KEYS, emptySet()).orEmpty()
+            .toMutableSet()
+        ignoredKeys.add(key)
+
+        prefs.edit()
+            .putStringSet(KEY_IGNORED_NOTIFICATION_KEYS, ignoredKeys)
+            .apply()
+    }
+
+    fun isIgnored(context: Context, notificationKey: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val ignoredKeys = prefs.getStringSet(KEY_IGNORED_NOTIFICATION_KEYS, emptySet()).orEmpty()
+        return ignoredKeys.contains(notificationKey)
     }
 
     private fun markCaptured(context: Context, packageName: String) {

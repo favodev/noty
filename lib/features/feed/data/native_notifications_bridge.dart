@@ -134,6 +134,22 @@ class NativeNotificationsBridge {
     }
   }
 
+  Future<void> ignoreCapturedNotification(String id) async {
+    if (!_supportsNativeBridge) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('ignoreCapturedNotification', {
+        'id': id,
+      });
+    } on MissingPluginException {
+      // No-op in unsupported targets.
+    } on PlatformException {
+      // No-op.
+    }
+  }
+
   Future<List<String>> getMonitoredPackages() async {
     if (!_supportsNativeBridge) {
       return const <String>[];

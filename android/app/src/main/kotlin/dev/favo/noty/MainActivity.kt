@@ -61,6 +61,12 @@ class MainActivity : FlutterActivity() {
 						result.success(NotificationCaptureStore.diagnostics(applicationContext))
 					}
 
+					"ignoreCapturedNotification" -> {
+						val notificationId = call.argument<String>("id").orEmpty()
+						NotificationCaptureStore.ignoreNotification(applicationContext, notificationId)
+						result.success(null)
+					}
+
 					"openNotificationListenerSettings" -> {
 						val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
 							.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

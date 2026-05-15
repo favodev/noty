@@ -91,6 +91,7 @@ class NotyShellService {
   }
 
   Future<void> deleteNotification(String id) async {
+    await _nativeBridge.ignoreCapturedNotification(id);
     await _repository.deleteItem(id);
   }
 
