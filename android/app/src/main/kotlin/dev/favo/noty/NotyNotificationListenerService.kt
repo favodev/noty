@@ -3,6 +3,7 @@ package dev.favo.noty
 import android.app.Notification
 import android.os.Build
 import android.service.notification.NotificationListenerService
+import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import java.lang.ref.WeakReference
 
@@ -36,6 +37,14 @@ class NotyNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        handlePostedNotification(sbn)
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?, rankingMap: RankingMap?) {
+        handlePostedNotification(sbn)
+    }
+
+    private fun handlePostedNotification(sbn: StatusBarNotification?) {
         try {
             val statusBarNotification = sbn ?: return
             NotificationCaptureStore.markPosted(applicationContext, statusBarNotification.packageName)
@@ -55,10 +64,6 @@ class NotyNotificationListenerService : NotificationListenerService() {
         if (sourcePackage == applicationContext.packageName) {
             return
         }
-        if (NotificationCaptureStore.isIgnored(applicationContext, statusBarNotification.key)) {
-            return
-        }
-
         val notification = statusBarNotification.notification
         val extras = notification.extras
 
@@ -108,6 +113,10 @@ class NotyNotificationListenerService : NotificationListenerService() {
             "${statusBarNotification.key}:${statusBarNotification.postTime}"
         } else {
             "${statusBarNotification.key}:${System.currentTimeMillis()}"
+        }
+
+        if (NotificationCaptureStore.isIgnored(applicationContext, captureId)) {
+            return
         }
 
         NotificationCaptureStore.append(
