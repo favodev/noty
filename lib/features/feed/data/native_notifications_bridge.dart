@@ -181,6 +181,7 @@ class NativeNotificationsBridge {
     }
 
     final packageName = _asString(raw['appPackage']);
+    final appName = _asString(raw['appName']).trim();
     final receivedAtEpochMs =
         _asInt(raw['receivedAtEpochMs']) ??
         DateTime.now().millisecondsSinceEpoch;
@@ -189,7 +190,7 @@ class NativeNotificationsBridge {
       id: _asString(
         raw['id'],
       ).ifEmpty(() => 'native-${DateTime.now().microsecondsSinceEpoch}'),
-      appName: _displayNameFromPackage(packageName),
+      appName: appName.ifEmpty(() => _displayNameFromPackage(packageName)),
       title: title,
       body: body,
       receivedAt: DateTime.fromMillisecondsSinceEpoch(receivedAtEpochMs),

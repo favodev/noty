@@ -146,16 +146,6 @@ class _NotificationPermissionCard extends StatelessWidget {
                 ),
               ],
             ),
-            if (diagnostics.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                _formatDiagnostics(),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -178,43 +168,6 @@ class _NotificationPermissionCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _formatDiagnostics() {
-    final connected = _formatEpoch(diagnostics['listenerConnectedAt']);
-    final posted = _formatEpoch(diagnostics['lastPostedAt']);
-    final captured = _formatEpoch(diagnostics['lastCapturedAt']);
-    final listenerConnected = diagnostics['listenerConnected'] == true;
-    final lastPackage = diagnostics['lastPackage']?.toString() ?? '';
-    final postedCount = diagnostics['postedCount']?.toString() ?? '0';
-    final capturedCount = diagnostics['capturedCount']?.toString() ?? '0';
-    final repairRequested = _formatEpoch(
-      diagnostics['listenerRepairRequestedAt'],
-    );
-    final repairCount = diagnostics['listenerRepairCount']?.toString() ?? '0';
-    final lastError = diagnostics['lastError']?.toString() ?? '';
-
-    return [
-      'Diagnóstico: conectado $connected · recibido $posted · guardado $captured',
-      'Servicio Android: ${listenerConnected ? 'conectado' : 'desconectado'}',
-      'Eventos: $postedCount recibidos / $capturedCount guardados',
-      'Reparación automática: $repairCount intentos · último $repairRequested',
-      if (lastPackage.isNotEmpty) 'Último paquete: $lastPackage',
-      if (lastError.isNotEmpty) 'Último error: $lastError',
-    ].join('\n');
-  }
-
-  String _formatEpoch(Object? value) {
-    final raw = value is int ? value : int.tryParse(value?.toString() ?? '');
-    if (raw == null || raw <= 0) {
-      return 'nunca';
-    }
-
-    final date = DateTime.fromMillisecondsSinceEpoch(raw);
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    final second = date.second.toString().padLeft(2, '0');
-    return '$hour:$minute:$second';
   }
 }
 

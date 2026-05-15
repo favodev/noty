@@ -114,7 +114,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
         try {
             val statusBarNotification = sbn ?: return
             NotificationCaptureStore.markPosted(applicationContext, statusBarNotification.packageName)
-            captureNotification(statusBarNotification, dedupeActiveNotification = false)
+            captureNotification(statusBarNotification)
         } catch (e: Exception) {
             NotificationCaptureStore.markError(applicationContext, e)
             // Prevenir que el servicio de Android crashee por completo.
@@ -122,11 +122,8 @@ class NotyNotificationListenerService : NotificationListenerService() {
         }
     }
 
-    private fun captureNotification(
-        statusBarNotification: StatusBarNotification,
-        dedupeActiveNotification: Boolean,
-    ) {
-        val sourcePackage = statusBarNotification.packageName
+    private fun captureNotification(statusBarNotification: StatusBarNotification) {
+        val sourcePackage = resolveSourcePackage(statusBarNotification)
         if (sourcePackage == applicationContext.packageName) {
             return
         }
@@ -180,11 +177,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        val captureId = if (dedupeActiveNotification) {
-            "${statusBarNotification.key}:${statusBarNotification.postTime}"
-        } else {
-            "${statusBarNotification.key}:${System.currentTimeMillis()}"
-        }
+        val captureId = "${statusBarNotification.key}:${statusBarNotification.postTime}"
 
         if (NotificationCaptureStore.isIgnored(applicationContext, captureId)) {
             return
@@ -195,6 +188,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
             payload = mapOf(
                 "id" to captureId,
                 "appPackage" to sourcePackage,
+                "appName" to resolveAppName(sourcePackage),
                 "title" to title,
                 "body" to body,
                 "receivedAtEpochMs" to statusBarNotification.postTime,
@@ -209,7 +203,35 @@ class NotyNotificationListenerService : NotificationListenerService() {
 
     private fun captureActiveNotifications() {
         NotificationCaptureStore.markListenerConnected(applicationContext)
-        activeNotifications?.forEach { captureNotification(it, dedupeActiveNotification = true) }
+        activeNotifications?.forEach { captureNotification(it) }
+    }
+
+    private fun resolveSourcePackage(statusBarNotification: StatusBarNotification): String {
+        val packageName = statusBarNotification.packageName
+        if (packageName != "android" && !packageName.startsWith("com.android.")) {
+            return packageName
+        }
+
+        val keyPackage = statusBarNotification.key
+            .split('|')
+            .getOrNull(1)
+            ?.trim()
+            .orEmpty()
+
+        if (keyPackage.isNotEmpty() && keyPackage != "android" && !keyPackage.startsWith("com.android.")) {
+            return keyPackage
+        }
+
+        return packageName
+    }
+
+    private fun resolveAppName(packageName: String): String {
+        return try {
+            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(applicationInfo).toString()
+        } catch (_: Exception) {
+            packageName
+        }
     }
 
     private fun migrateNotificationFilterIfNeeded() {

@@ -8,7 +8,6 @@ class FeedPage extends StatefulWidget {
     required this.isLoading,
     this.errorMessage,
     required this.isNotificationListenerEnabled,
-    required this.isNotificationListenerConnected,
     required this.onOpenNotificationSettings,
     required this.onRefreshRequested,
     required this.onDeleteNotification,
@@ -19,7 +18,6 @@ class FeedPage extends StatefulWidget {
   final bool isLoading;
   final String? errorMessage;
   final bool isNotificationListenerEnabled;
-  final bool isNotificationListenerConnected;
   final VoidCallback onOpenNotificationSettings;
   final Future<void> Function() onRefreshRequested;
   final Future<void> Function(String id) onDeleteNotification;
@@ -110,42 +108,6 @@ class _FeedPageState extends State<FeedPage> {
                       foregroundColor: colorScheme.error,
                     ),
                     child: const Text('Dar permiso'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (widget.isNotificationListenerEnabled &&
-              !widget.isNotificationListenerConnected) ...[
-            Container(
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                color: colorScheme.errorContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: colorScheme.error.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.sync_problem_rounded, color: colorScheme.error),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Android dio el permiso, pero no conectó el servicio de captura.',
-                      style: TextStyle(
-                        color: colorScheme.onErrorContainer,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: widget.onOpenNotificationSettings,
-                    style: TextButton.styleFrom(
-                      foregroundColor: colorScheme.error,
-                    ),
-                    child: const Text('Revisar'),
                   ),
                 ],
               ),
