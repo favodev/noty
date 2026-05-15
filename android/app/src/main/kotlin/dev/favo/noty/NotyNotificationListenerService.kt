@@ -3,6 +3,7 @@ package dev.favo.noty
 import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.RankingMap
@@ -11,6 +12,8 @@ import java.lang.ref.WeakReference
 
 class NotyNotificationListenerService : NotificationListenerService() {
     companion object {
+        private const val REPAIR_COOLDOWN_MS = 60_000L
+
         private var activeService: WeakReference<NotyNotificationListenerService>? = null
 
         fun captureActiveNotificationsIfConnected(): Boolean {
@@ -23,7 +26,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
             return activeService?.get() != null
         }
 
-        fun requestRebindIfNeeded(context: Context): Boolean {
+        fun repairConnectionIfNeeded(context: Context): Boolean {
             if (activeService?.get() != null) {
                 return false
             }
@@ -32,10 +35,43 @@ class NotyNotificationListenerService : NotificationListenerService() {
                 return false
             }
 
+            if (!NotificationCaptureStore.canRequestListenerRepair(context, REPAIR_COOLDOWN_MS)) {
+                return false
+            }
+
+            return try {
+                val appContext = context.applicationContext
+                val component = ComponentName(
+                    appContext,
+                    NotyNotificationListenerService::class.java,
+                )
+
+                NotificationCaptureStore.markListenerRepairRequested(appContext)
+
+                appContext.packageManager.setComponentEnabledSetting(
+                    component,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP,
+                )
+                appContext.packageManager.setComponentEnabledSetting(
+                    component,
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP,
+                )
+                NotificationListenerService.requestRebind(component)
+
+                true
+            } catch (e: Exception) {
+                NotificationCaptureStore.markError(context, e)
+                false
+            }
+        }
+
+        fun requestRebindAfterDisconnect(context: Context): Boolean {
             return try {
                 NotificationListenerService.requestRebind(
                     ComponentName(
-                        context,
+                        context.applicationContext,
                         NotyNotificationListenerService::class.java,
                     ),
                 )
@@ -62,7 +98,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         activeService = null
-        requestRebindIfNeeded(applicationContext)
+        requestRebindAfterDisconnect(applicationContext)
         super.onListenerDisconnected()
     }
 
@@ -94,6 +130,11 @@ class NotyNotificationListenerService : NotificationListenerService() {
         if (sourcePackage == applicationContext.packageName) {
             return
         }
+
+        if (!AppFilterStore.isPackageMonitored(applicationContext, sourcePackage)) {
+            return
+        }
+
         val notification = statusBarNotification.notification
         val extras = notification.extras
 

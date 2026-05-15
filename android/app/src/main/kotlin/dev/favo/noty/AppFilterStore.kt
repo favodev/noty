@@ -14,11 +14,13 @@ object AppFilterStore {
 
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         
-        if (!prefs.contains(KEY_MONITORED_PACKAGES)) {
+        val hasExplicitSelection = prefs.contains(KEY_MONITORED_PACKAGES)
+        if (!hasExplicitSelection) {
             return isAllowedDefaultNotificationSource(context, packageName)
         }
-        
-        return isAllowedDefaultNotificationSource(context, packageName)
+
+        val monitored = prefs.getStringSet(KEY_MONITORED_PACKAGES, emptySet()) ?: emptySet()
+        return monitored.contains(packageName)
     }
 
     fun updateMonitoredPackages(context: Context, packages: List<String>) {

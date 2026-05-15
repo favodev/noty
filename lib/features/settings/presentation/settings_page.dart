@@ -86,7 +86,24 @@ class _NotificationPermissionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final statusColor = isEnabled ? colorScheme.primary : colorScheme.tertiary;
+    final listenerConnected = diagnostics['listenerConnected'] == true;
+    final isCapturing = isEnabled && listenerConnected;
+    final statusColor = isCapturing
+        ? colorScheme.primary
+        : isEnabled
+        ? colorScheme.error
+        : colorScheme.tertiary;
+    final statusIcon = isCapturing ? Icons.check_circle : Icons.warning_rounded;
+    final statusTitle = isCapturing
+        ? 'Captura activa'
+        : isEnabled
+        ? 'Servicio desconectado'
+        : 'Permiso pendiente';
+    final statusBody = isCapturing
+        ? 'Android ya está entregando notificaciones a Noty.'
+        : isEnabled
+        ? 'El permiso está activo, pero Android no tiene conectado el servicio de Noty.'
+        : 'Habilita el acceso para empezar a guardar notificaciones.';
 
     return Card(
       child: Padding(
@@ -104,11 +121,7 @@ class _NotificationPermissionCard extends StatelessWidget {
                     color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    isEnabled ? Icons.check_circle : Icons.warning_rounded,
-                    color: statusColor,
-                    size: 20,
-                  ),
+                  child: Icon(statusIcon, color: statusColor, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -116,16 +129,14 @@ class _NotificationPermissionCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        isEnabled ? 'Captura activa' : 'Permiso pendiente',
+                        statusTitle,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        isEnabled
-                            ? 'Android ya está entregando notificaciones a Noty.'
-                            : 'Habilita el acceso para empezar a guardar notificaciones.',
+                        statusBody,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                         ),
@@ -177,12 +188,17 @@ class _NotificationPermissionCard extends StatelessWidget {
     final lastPackage = diagnostics['lastPackage']?.toString() ?? '';
     final postedCount = diagnostics['postedCount']?.toString() ?? '0';
     final capturedCount = diagnostics['capturedCount']?.toString() ?? '0';
+    final repairRequested = _formatEpoch(
+      diagnostics['listenerRepairRequestedAt'],
+    );
+    final repairCount = diagnostics['listenerRepairCount']?.toString() ?? '0';
     final lastError = diagnostics['lastError']?.toString() ?? '';
 
     return [
       'Diagnóstico: conectado $connected · recibido $posted · guardado $captured',
-      'Servicio Android: ${listenerConnected ? 'conectado' : 'reconectando'}',
+      'Servicio Android: ${listenerConnected ? 'conectado' : 'desconectado'}',
       'Eventos: $postedCount recibidos / $capturedCount guardados',
+      'Reparación automática: $repairCount intentos · último $repairRequested',
       if (lastPackage.isNotEmpty) 'Último paquete: $lastPackage',
       if (lastError.isNotEmpty) 'Último error: $lastError',
     ].join('\n');

@@ -1,9 +1,11 @@
 package dev.favo.noty
 
+import android.content.ComponentName
 import android.content.Intent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.IntentFilter
+import android.os.Build
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -51,18 +53,18 @@ class MainActivity : FlutterActivity() {
 					"drainPendingNotifications" -> {
 						val capturedActive = NotyNotificationListenerService.captureActiveNotificationsIfConnected()
 						if (!capturedActive) {
-							NotyNotificationListenerService.requestRebindIfNeeded(applicationContext)
+							NotyNotificationListenerService.repairConnectionIfNeeded(applicationContext)
 						}
 						result.success(NotificationCaptureStore.drain(applicationContext))
 					}
 
 					"isNotificationListenerEnabled" -> {
-						NotyNotificationListenerService.requestRebindIfNeeded(applicationContext)
+						NotyNotificationListenerService.repairConnectionIfNeeded(applicationContext)
 						result.success(NotificationCaptureStore.isListenerEnabled(applicationContext))
 					}
 
 					"getNativeDiagnostics" -> {
-						NotyNotificationListenerService.requestRebindIfNeeded(applicationContext)
+						NotyNotificationListenerService.repairConnectionIfNeeded(applicationContext)
 						result.success(NotificationCaptureStore.diagnostics(applicationContext))
 					}
 
@@ -73,9 +75,7 @@ class MainActivity : FlutterActivity() {
 					}
 
 					"openNotificationListenerSettings" -> {
-						val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-							.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-						startActivity(intent)
+						openNotificationListenerSettings()
 						result.success(null)
 					}
 
@@ -96,5 +96,31 @@ class MainActivity : FlutterActivity() {
 					else -> result.notImplemented()
 				}
 			}
+	}
+
+	private fun openNotificationListenerSettings() {
+		val component = ComponentName(
+			applicationContext,
+			NotyNotificationListenerService::class.java,
+		)
+
+		val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+			Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
+				.putExtra(
+					Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+					component.flattenToString(),
+				)
+		} else {
+			Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+		}.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+		try {
+			startActivity(intent)
+		} catch (_: Exception) {
+			startActivity(
+				Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+					.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+			)
+		}
 	}
 }

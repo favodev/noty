@@ -17,6 +17,8 @@ object NotificationCaptureStore {
     private const val KEY_CAPTURED_COUNT = "captured_count"
     private const val KEY_LAST_ERROR = "last_error"
     private const val KEY_IGNORED_NOTIFICATION_IDS = "ignored_notification_ids"
+    private const val KEY_LISTENER_REPAIR_REQUESTED_AT = "listener_repair_requested_at"
+    private const val KEY_LISTENER_REPAIR_COUNT = "listener_repair_count"
 
     fun append(context: Context, payload: Map<String, Any?>) {
         migrateIfNeeded(context)
@@ -81,8 +83,25 @@ object NotificationCaptureStore {
             "lastPackage" to prefs.getString(KEY_LAST_PACKAGE, ""),
             "postedCount" to prefs.getInt(KEY_POSTED_COUNT, 0),
             "capturedCount" to prefs.getInt(KEY_CAPTURED_COUNT, 0),
+            "listenerRepairRequestedAt" to prefs.getLong(KEY_LISTENER_REPAIR_REQUESTED_AT, 0L),
+            "listenerRepairCount" to prefs.getInt(KEY_LISTENER_REPAIR_COUNT, 0),
             "lastError" to prefs.getString(KEY_LAST_ERROR, ""),
         )
+    }
+
+    fun canRequestListenerRepair(context: Context, cooldownMs: Long): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastRequestedAt = prefs.getLong(KEY_LISTENER_REPAIR_REQUESTED_AT, 0L)
+        return System.currentTimeMillis() - lastRequestedAt >= cooldownMs
+    }
+
+    fun markListenerRepairRequested(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putLong(KEY_LISTENER_REPAIR_REQUESTED_AT, System.currentTimeMillis())
+            .putInt(KEY_LISTENER_REPAIR_COUNT, prefs.getInt(KEY_LISTENER_REPAIR_COUNT, 0) + 1)
+            .remove(KEY_LAST_ERROR)
+            .apply()
     }
 
     fun ignoreNotification(context: Context, notificationId: String) {

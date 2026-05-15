@@ -31,6 +31,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   int _index = 0;
   bool _isLoadingNotifications = true;
   bool _isNotificationListenerEnabled = false;
+  bool _isNotificationListenerConnected = false;
   bool _isDataBusy = false;
   bool _isRefreshingNotifications = false;
   String? _notificationsError;
@@ -120,6 +121,8 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         _notifications = result.notifications;
         _isLoadingNotifications = false;
         _isNotificationListenerEnabled = result.listenerEnabled;
+        _isNotificationListenerConnected =
+            nativeDiagnostics['listenerConnected'] == true;
         _notificationsError = result.errorMessage;
         _nativeDiagnostics = nativeDiagnostics;
       });
@@ -211,6 +214,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         isLoading: _isLoadingNotifications,
         errorMessage: _notificationsError,
         isNotificationListenerEnabled: _isNotificationListenerEnabled,
+        isNotificationListenerConnected: _isNotificationListenerConnected,
         onOpenNotificationSettings:
             _shellService.openNotificationListenerSettings,
         onRefreshRequested: _loadNotifications,
