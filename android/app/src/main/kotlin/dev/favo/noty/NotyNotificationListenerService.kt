@@ -1,6 +1,8 @@
 package dev.favo.noty
 
 import android.app.Notification
+import android.content.ComponentName
+import android.content.Context
 import android.os.Build
 import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.RankingMap
@@ -15,6 +17,33 @@ class NotyNotificationListenerService : NotificationListenerService() {
             val service = activeService?.get() ?: return false
             service.captureActiveNotifications()
             return true
+        }
+
+        fun isConnected(): Boolean {
+            return activeService?.get() != null
+        }
+
+        fun requestRebindIfNeeded(context: Context): Boolean {
+            if (activeService?.get() != null) {
+                return false
+            }
+
+            if (!NotificationCaptureStore.isListenerEnabled(context)) {
+                return false
+            }
+
+            return try {
+                NotificationListenerService.requestRebind(
+                    ComponentName(
+                        context,
+                        NotyNotificationListenerService::class.java,
+                    ),
+                )
+                true
+            } catch (e: Exception) {
+                NotificationCaptureStore.markError(context, e)
+                false
+            }
         }
     }
 
@@ -33,6 +62,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         activeService = null
+        requestRebindIfNeeded(applicationContext)
         super.onListenerDisconnected()
     }
 

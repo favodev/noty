@@ -49,15 +49,20 @@ class MainActivity : FlutterActivity() {
 			.setMethodCallHandler { call, result ->
 				when (call.method) {
 					"drainPendingNotifications" -> {
-						NotyNotificationListenerService.captureActiveNotificationsIfConnected()
+						val capturedActive = NotyNotificationListenerService.captureActiveNotificationsIfConnected()
+						if (!capturedActive) {
+							NotyNotificationListenerService.requestRebindIfNeeded(applicationContext)
+						}
 						result.success(NotificationCaptureStore.drain(applicationContext))
 					}
 
 					"isNotificationListenerEnabled" -> {
+						NotyNotificationListenerService.requestRebindIfNeeded(applicationContext)
 						result.success(NotificationCaptureStore.isListenerEnabled(applicationContext))
 					}
 
 					"getNativeDiagnostics" -> {
+						NotyNotificationListenerService.requestRebindIfNeeded(applicationContext)
 						result.success(NotificationCaptureStore.diagnostics(applicationContext))
 					}
 

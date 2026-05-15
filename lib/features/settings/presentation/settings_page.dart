@@ -173,6 +173,7 @@ class _NotificationPermissionCard extends StatelessWidget {
     final connected = _formatEpoch(diagnostics['listenerConnectedAt']);
     final posted = _formatEpoch(diagnostics['lastPostedAt']);
     final captured = _formatEpoch(diagnostics['lastCapturedAt']);
+    final listenerConnected = diagnostics['listenerConnected'] == true;
     final lastPackage = diagnostics['lastPackage']?.toString() ?? '';
     final postedCount = diagnostics['postedCount']?.toString() ?? '0';
     final capturedCount = diagnostics['capturedCount']?.toString() ?? '0';
@@ -180,6 +181,7 @@ class _NotificationPermissionCard extends StatelessWidget {
 
     return [
       'Diagnóstico: conectado $connected · recibido $posted · guardado $captured',
+      'Servicio Android: ${listenerConnected ? 'conectado' : 'reconectando'}',
       'Eventos: $postedCount recibidos / $capturedCount guardados',
       if (lastPackage.isNotEmpty) 'Último paquete: $lastPackage',
       if (lastError.isNotEmpty) 'Último error: $lastError',

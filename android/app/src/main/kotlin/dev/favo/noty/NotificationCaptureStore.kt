@@ -74,6 +74,7 @@ object NotificationCaptureStore {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return mapOf(
             "listenerEnabled" to isListenerEnabled(context),
+            "listenerConnected" to NotyNotificationListenerService.isConnected(),
             "listenerConnectedAt" to prefs.getLong(KEY_LISTENER_CONNECTED_AT, 0L),
             "lastPostedAt" to prefs.getLong(KEY_LAST_POSTED_AT, 0L),
             "lastCapturedAt" to prefs.getLong(KEY_LAST_CAPTURED_AT, 0L),
