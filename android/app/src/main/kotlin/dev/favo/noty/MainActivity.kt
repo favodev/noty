@@ -49,6 +49,7 @@ class MainActivity : FlutterActivity() {
 			.setMethodCallHandler { call, result ->
 				when (call.method) {
 					"drainPendingNotifications" -> {
+						NotyNotificationListenerService.captureActiveNotificationsIfConnected()
 						result.success(NotificationCaptureStore.drain(applicationContext))
 					}
 

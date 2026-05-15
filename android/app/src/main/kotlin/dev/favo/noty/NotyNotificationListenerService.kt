@@ -3,18 +3,34 @@ package dev.favo.noty
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import java.lang.ref.WeakReference
 
 class NotyNotificationListenerService : NotificationListenerService() {
+    companion object {
+        private var activeService: WeakReference<NotyNotificationListenerService>? = null
+
+        fun captureActiveNotificationsIfConnected(): Boolean {
+            val service = activeService?.get() ?: return false
+            service.captureActiveNotifications()
+            return true
+        }
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
+        activeService = WeakReference(this)
 
         try {
-            NotificationCaptureStore.markListenerConnected(applicationContext)
-            activeNotifications?.forEach { captureNotification(it, dedupeActiveNotification = true) }
+            captureActiveNotifications()
         } catch (e: Exception) {
             NotificationCaptureStore.markError(applicationContext, e)
             e.printStackTrace()
         }
+    }
+
+    override fun onListenerDisconnected() {
+        activeService = null
+        super.onListenerDisconnected()
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -99,6 +115,11 @@ class NotyNotificationListenerService : NotificationListenerService() {
         val intent = android.content.Intent("dev.favo.noty.NEW_NOTIFICATION")
             .setPackage(packageName)
         sendBroadcast(intent)
+    }
+
+    private fun captureActiveNotifications() {
+        NotificationCaptureStore.markListenerConnected(applicationContext)
+        activeNotifications?.forEach { captureNotification(it, dedupeActiveNotification = true) }
     }
 
     private fun extractMessagingBody(extras: android.os.Bundle): String {
