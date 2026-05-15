@@ -21,9 +21,9 @@ class NotyShellService {
     LocalNotificationsRepository? repository,
     NativeNotificationsBridge? nativeBridge,
     NotificationArchiveService? archiveService,
-  })  : _repository = repository ?? LocalNotificationsRepository(),
-        _nativeBridge = nativeBridge ?? NativeNotificationsBridge(),
-        _archiveService = archiveService ?? NotificationArchiveService();
+  }) : _repository = repository ?? LocalNotificationsRepository(),
+       _nativeBridge = nativeBridge ?? NativeNotificationsBridge(),
+       _archiveService = archiveService ?? NotificationArchiveService();
 
   final LocalNotificationsRepository _repository;
   final NativeNotificationsBridge _nativeBridge;
@@ -46,8 +46,10 @@ class NotyShellService {
     try {
       await _repository.initialize();
 
-      final listenerEnabled = await _nativeBridge.isNotificationListenerEnabled();
-      final nativeNotifications = await _nativeBridge.drainPendingNotifications();
+      final listenerEnabled = await _nativeBridge
+          .isNotificationListenerEnabled();
+      final nativeNotifications = await _nativeBridge
+          .drainPendingNotifications();
 
       for (final item in nativeNotifications) {
         await _repository.upsert(item);
@@ -78,6 +80,10 @@ class NotyShellService {
 
   Future<List<String>> getMonitoredPackages() async {
     return _nativeBridge.getMonitoredPackages();
+  }
+
+  Future<Map<String, Object?>> getNativeDiagnostics() async {
+    return _nativeBridge.getNativeDiagnostics();
   }
 
   Future<void> updateMonitoredPackages(List<String> packages) async {

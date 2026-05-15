@@ -62,6 +62,23 @@ class NativeNotificationsBridge {
     }
   }
 
+  Future<Map<String, Object?>> getNativeDiagnostics() async {
+    if (!_supportsNativeBridge) {
+      return const <String, Object?>{};
+    }
+
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getNativeDiagnostics',
+      );
+      return result?.cast<String, Object?>() ?? const <String, Object?>{};
+    } on MissingPluginException {
+      return const <String, Object?>{};
+    } on PlatformException {
+      return const <String, Object?>{};
+    }
+  }
+
   Future<void> openNotificationListenerSettings() async {
     if (!_supportsNativeBridge) {
       return;

@@ -34,6 +34,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   bool _isDataBusy = false;
   bool _isRefreshingNotifications = false;
   String? _notificationsError;
+  Map<String, Object?> _nativeDiagnostics = const <String, Object?>{};
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
   static const List<String> _titles = <String>['Inicio', 'Ajustes'];
@@ -107,6 +108,9 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       final result = await _shellService.loadNotifications(
         enableLocalPersistence: widget.enableLocalPersistence,
       );
+      final nativeDiagnostics = widget.enableLocalPersistence
+          ? await _shellService.getNativeDiagnostics()
+          : const <String, Object?>{};
 
       if (!mounted) {
         return;
@@ -117,6 +121,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         _isLoadingNotifications = false;
         _isNotificationListenerEnabled = result.listenerEnabled;
         _notificationsError = result.errorMessage;
+        _nativeDiagnostics = nativeDiagnostics;
       });
     } finally {
       _isRefreshingNotifications = false;
@@ -215,6 +220,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       SettingsPage(
         currentThemeMode: widget.currentThemeMode,
         notificationListenerEnabled: _isNotificationListenerEnabled,
+        nativeDiagnostics: _nativeDiagnostics,
         isDataBusy: _isDataBusy,
         onOpenNotificationSettings:
             _shellService.openNotificationListenerSettings,

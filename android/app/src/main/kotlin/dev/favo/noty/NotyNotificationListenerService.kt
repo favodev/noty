@@ -9,16 +9,21 @@ class NotyNotificationListenerService : NotificationListenerService() {
         super.onListenerConnected()
 
         try {
+            NotificationCaptureStore.markListenerConnected(applicationContext)
             activeNotifications?.forEach { captureNotification(it, dedupeActiveNotification = true) }
         } catch (e: Exception) {
+            NotificationCaptureStore.markError(applicationContext, e)
             e.printStackTrace()
         }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         try {
-            captureNotification(sbn ?: return, dedupeActiveNotification = false)
+            val statusBarNotification = sbn ?: return
+            NotificationCaptureStore.markPosted(applicationContext, statusBarNotification.packageName)
+            captureNotification(statusBarNotification, dedupeActiveNotification = false)
         } catch (e: Exception) {
+            NotificationCaptureStore.markError(applicationContext, e)
             // Prevenir que el servicio de Android crashee por completo.
             e.printStackTrace()
         }

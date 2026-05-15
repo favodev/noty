@@ -89,6 +89,10 @@ object AppFilterStore {
             return false
         }
 
+        if (packageName.startsWith("com.miui.")) {
+            return false
+        }
+
         return true
     }
 

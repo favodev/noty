@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
     super.key,
     required this.currentThemeMode,
     required this.notificationListenerEnabled,
+    required this.nativeDiagnostics,
     required this.isDataBusy,
     required this.onOpenNotificationSettings,
     required this.onOpenAppSelection,
@@ -16,6 +17,7 @@ class SettingsPage extends StatelessWidget {
 
   final ThemeMode currentThemeMode;
   final bool notificationListenerEnabled;
+  final Map<String, Object?> nativeDiagnostics;
   final bool isDataBusy;
   final Future<void> Function() onOpenNotificationSettings;
   final VoidCallback onOpenAppSelection;
@@ -31,20 +33,21 @@ class SettingsPage extends StatelessWidget {
       children: <Widget>[
         Text(
           'Ajustes',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
         Text(
           'Todo queda guardado solo en este teléfono. Para cambiar de móvil, exporta e importa tu historial.',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 16),
         _NotificationPermissionCard(
           isEnabled: notificationListenerEnabled,
+          diagnostics: nativeDiagnostics,
           onOpenSettings: onOpenNotificationSettings,
           onOpenAppSelection: onOpenAppSelection,
         ),
@@ -60,10 +63,7 @@ class SettingsPage extends StatelessWidget {
           onThemeModeChanged: onThemeModeChanged,
         ),
         const SizedBox(height: 12),
-        _DataManagementCard(
-          isBusy: isDataBusy,
-          onClearHistory: onClearHistory,
-        ),
+        _DataManagementCard(isBusy: isDataBusy, onClearHistory: onClearHistory),
       ],
     );
   }
@@ -72,11 +72,13 @@ class SettingsPage extends StatelessWidget {
 class _NotificationPermissionCard extends StatelessWidget {
   const _NotificationPermissionCard({
     required this.isEnabled,
+    required this.diagnostics,
     required this.onOpenSettings,
     required this.onOpenAppSelection,
   });
 
   final bool isEnabled;
+  final Map<String, Object?> diagnostics;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenAppSelection;
 
@@ -133,6 +135,16 @@ class _NotificationPermissionCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (diagnostics.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                _formatDiagnostics(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
@@ -155,6 +167,36 @@ class _NotificationPermissionCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _formatDiagnostics() {
+    final connected = _formatEpoch(diagnostics['listenerConnectedAt']);
+    final posted = _formatEpoch(diagnostics['lastPostedAt']);
+    final captured = _formatEpoch(diagnostics['lastCapturedAt']);
+    final lastPackage = diagnostics['lastPackage']?.toString() ?? '';
+    final postedCount = diagnostics['postedCount']?.toString() ?? '0';
+    final capturedCount = diagnostics['capturedCount']?.toString() ?? '0';
+    final lastError = diagnostics['lastError']?.toString() ?? '';
+
+    return [
+      'Diagnóstico: conectado $connected · recibido $posted · guardado $captured',
+      'Eventos: $postedCount recibidos / $capturedCount guardados',
+      if (lastPackage.isNotEmpty) 'Último paquete: $lastPackage',
+      if (lastError.isNotEmpty) 'Último error: $lastError',
+    ].join('\n');
+  }
+
+  String _formatEpoch(Object? value) {
+    final raw = value is int ? value : int.tryParse(value?.toString() ?? '');
+    if (raw == null || raw <= 0) {
+      return 'nunca';
+    }
+
+    final date = DateTime.fromMillisecondsSinceEpoch(raw);
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    final second = date.second.toString().padLeft(2, '0');
+    return '$hour:$minute:$second';
   }
 }
 
@@ -311,7 +353,9 @@ class _DataManagementCard extends StatelessWidget {
                 label: const Text('Vaciar base de datos'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: theme.colorScheme.error,
-                  side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
+                  side: BorderSide(
+                    color: theme.colorScheme.error.withValues(alpha: 0.5),
+                  ),
                 ),
               ),
             ),

@@ -56,6 +56,10 @@ class MainActivity : FlutterActivity() {
 						result.success(NotificationCaptureStore.isListenerEnabled(applicationContext))
 					}
 
+					"getNativeDiagnostics" -> {
+						result.success(NotificationCaptureStore.diagnostics(applicationContext))
+					}
+
 					"openNotificationListenerSettings" -> {
 						val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
 							.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

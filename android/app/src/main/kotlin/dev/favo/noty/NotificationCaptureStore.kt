@@ -3,18 +3,25 @@ package dev.favo.noty
 import android.content.ComponentName
 import android.content.Context
 import android.provider.Settings
-import android.service.notification.NotificationListenerService
 import org.json.JSONArray
 import org.json.JSONObject
 
 object NotificationCaptureStore {
     private const val PREFS_NAME = "noty_native_capture"
     private const val KEY_PENDING_NOTIFICATIONS = "pending_notifications"
+    private const val KEY_LISTENER_CONNECTED_AT = "listener_connected_at"
+    private const val KEY_LAST_POSTED_AT = "last_posted_at"
+    private const val KEY_LAST_CAPTURED_AT = "last_captured_at"
+    private const val KEY_LAST_PACKAGE = "last_package"
+    private const val KEY_POSTED_COUNT = "posted_count"
+    private const val KEY_CAPTURED_COUNT = "captured_count"
+    private const val KEY_LAST_ERROR = "last_error"
 
     fun append(context: Context, payload: Map<String, Any?>) {
         migrateIfNeeded(context)
         val dbHelper = NativeCaptureDatabaseHelper(context)
         dbHelper.append(payload)
+        markCaptured(context, payload["appPackage"]?.toString().orEmpty())
     }
 
     fun drain(context: Context): List<Map<String, Any?>> {
@@ -34,21 +41,56 @@ object NotificationCaptureStore {
         val flat = component.flattenToString()
         val short = component.flattenToShortString()
 
-        val isEnabled = enabledListeners.contains(flat) || enabledListeners.contains(short)
-        if (isEnabled) {
-            requestListenerRebind(context)
-        }
-
-        return isEnabled
+        return enabledListeners.contains(flat) || enabledListeners.contains(short)
     }
 
-    private fun requestListenerRebind(context: Context) {
-        try {
-            val component = ComponentName(context, NotyNotificationListenerService::class.java)
-            NotificationListenerService.requestRebind(component)
-        } catch (_: Throwable) {
-            // Algunos Android/MIUI ignoran el rebind aunque el permiso siga activo.
-        }
+    fun markListenerConnected(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LISTENER_CONNECTED_AT, System.currentTimeMillis())
+            .remove(KEY_LAST_ERROR)
+            .apply()
+    }
+
+    fun markPosted(context: Context, packageName: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putLong(KEY_LAST_POSTED_AT, System.currentTimeMillis())
+            .putString(KEY_LAST_PACKAGE, packageName)
+            .putInt(KEY_POSTED_COUNT, prefs.getInt(KEY_POSTED_COUNT, 0) + 1)
+            .remove(KEY_LAST_ERROR)
+            .apply()
+    }
+
+    fun markError(context: Context, error: Throwable) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_ERROR, "${error::class.java.simpleName}: ${error.message.orEmpty()}")
+            .apply()
+    }
+
+    fun diagnostics(context: Context): Map<String, Any?> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return mapOf(
+            "listenerEnabled" to isListenerEnabled(context),
+            "listenerConnectedAt" to prefs.getLong(KEY_LISTENER_CONNECTED_AT, 0L),
+            "lastPostedAt" to prefs.getLong(KEY_LAST_POSTED_AT, 0L),
+            "lastCapturedAt" to prefs.getLong(KEY_LAST_CAPTURED_AT, 0L),
+            "lastPackage" to prefs.getString(KEY_LAST_PACKAGE, ""),
+            "postedCount" to prefs.getInt(KEY_POSTED_COUNT, 0),
+            "capturedCount" to prefs.getInt(KEY_CAPTURED_COUNT, 0),
+            "lastError" to prefs.getString(KEY_LAST_ERROR, ""),
+        )
+    }
+
+    private fun markCaptured(context: Context, packageName: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putLong(KEY_LAST_CAPTURED_AT, System.currentTimeMillis())
+            .putString(KEY_LAST_PACKAGE, packageName)
+            .putInt(KEY_CAPTURED_COUNT, prefs.getInt(KEY_CAPTURED_COUNT, 0) + 1)
+            .remove(KEY_LAST_ERROR)
+            .apply()
     }
 
     private fun migrateIfNeeded(context: Context) {
