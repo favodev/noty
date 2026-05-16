@@ -5,19 +5,27 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 import java.lang.ref.WeakReference
+import java.security.MessageDigest
 
 class NotyNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val REPAIR_COOLDOWN_MS = 60_000L
+        private const val ACTIVE_SYNC_COOLDOWN_MS = 30_000L
 
         private var activeService: WeakReference<NotyNotificationListenerService>? = null
 
         fun captureActiveNotificationsIfConnected(): Boolean {
             val service = activeService?.get() ?: return false
+            val now = System.currentTimeMillis()
+            if (now - service.lastActiveSyncRequestedAt < ACTIVE_SYNC_COOLDOWN_MS) {
+                return true
+            }
+            service.lastActiveSyncRequestedAt = now
             service.captureActiveNotifications()
             return true
         }
@@ -83,6 +91,8 @@ class NotyNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private var lastActiveSyncRequestedAt = 0L
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         activeService = WeakReference(this)
@@ -126,80 +136,81 @@ class NotyNotificationListenerService : NotificationListenerService() {
     private fun captureNotification(statusBarNotification: StatusBarNotification) {
         val sourcePackage = resolveSourcePackage(statusBarNotification)
         if (sourcePackage == applicationContext.packageName) {
+            NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "app-propia")
             return
         }
 
         if (!AppFilterStore.isPackageMonitored(applicationContext, sourcePackage)) {
+            NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "app-no-monitoreada")
             return
         }
 
         val notification = statusBarNotification.notification
+        if (isGroupSummary(notification)) {
+            NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "resumen-grupo")
+            return
+        }
+
         val extras = notification.extras
+        val appName = resolveAppName(sourcePackage)
+        val title = resolveTitle(extras)
 
-        var title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
-
-        if (title.isEmpty()) {
-            title = extras?.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
-        }
-
-        var body = if (extras == null) "" else extractMessagingBody(extras)
-
-        if (body.isEmpty()) {
-            body = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
-        }
-
-        if (body.isEmpty()) {
-            body = extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
-        }
-
-        if (body.isEmpty() && extras != null) {
-            try {
-                val textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
-                if (!textLines.isNullOrEmpty()) {
-                    body = textLines.joinToString("\n") { it?.toString()?.trim().orEmpty() }
-                }
-            } catch (e: Exception) {
-                // Ignore.
-            }
-        }
-
-        if (body.isEmpty()) {
-            body = notification.tickerText?.toString()?.trim().orEmpty()
-        }
-
-        // Fallback si no hay título ni cuerpo (ej. multimedia o apps que ocultan extras).
-        if (title.isEmpty() && body.isEmpty()) {
-            body = "[Notificación sin texto o multimedia]"
-            title = sourcePackage
-        }
-
-        val hasOnlyFallbackContent = title == sourcePackage && body == "[Notificación sin texto o multimedia]"
-        if (shouldSkipNoise(sourcePackage, hasOnlyFallbackContent)) {
-            return
-        }
-
-        val captureId = "${statusBarNotification.key}:${statusBarNotification.postTime}"
-
-        if (NotificationCaptureStore.isIgnored(applicationContext, captureId)) {
-            return
-        }
-
-        NotificationCaptureStore.append(
-            context = applicationContext,
-            payload = mapOf(
-                "id" to captureId,
-                "appPackage" to sourcePackage,
-                "appName" to resolveAppName(sourcePackage),
-                "title" to title,
-                "body" to body,
-                "receivedAtEpochMs" to statusBarNotification.postTime,
-                "isUnread" to true,
-            ),
+        val messagingCaptures = extractMessagingCaptures(
+            extras = extras,
+            fallbackTitle = title,
+            statusBarNotification = statusBarNotification,
         )
 
-        val intent = android.content.Intent("dev.favo.noty.NEW_NOTIFICATION")
-            .setPackage(packageName)
-        sendBroadcast(intent)
+        if (messagingCaptures.isNotEmpty()) {
+            var capturedAny = false
+            for (message in messagingCaptures) {
+                val captured = appendCapturedNotification(
+                    sourcePackage = sourcePackage,
+                    appName = appName,
+                    title = message.title,
+                    body = message.body,
+                    receivedAtEpochMs = message.receivedAtEpochMs,
+                    captureId = message.captureId,
+                )
+                capturedAny = capturedAny || captured
+            }
+            if (capturedAny) {
+                notifyFlutter()
+            }
+            return
+        }
+
+        var body = resolveBody(extras, notification)
+
+        if (title.isEmpty() && body.isEmpty()) {
+            body = "[Notificacion sin texto o multimedia]"
+        }
+
+        val resolvedTitle = title.ifEmpty { sourcePackage }
+
+        if (isCountOnlyMessagingSummary(sourcePackage, body)) {
+            NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "resumen-mensajes")
+            return
+        }
+
+        val hasOnlyFallbackContent = resolvedTitle == sourcePackage && body == "[Notificacion sin texto o multimedia]"
+        if (shouldSkipNoise(sourcePackage, hasOnlyFallbackContent)) {
+            NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "ruido-sistema")
+            return
+        }
+
+        val captured = appendCapturedNotification(
+            sourcePackage = sourcePackage,
+            appName = appName,
+            title = resolvedTitle,
+            body = body,
+            receivedAtEpochMs = statusBarNotification.postTime,
+            captureId = buildContentCaptureId(statusBarNotification, resolvedTitle, body),
+        )
+
+        if (captured) {
+            notifyFlutter()
+        }
     }
 
     private fun captureActiveNotifications() {
@@ -208,6 +219,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
         NotificationCaptureStore.markActiveNotificationSnapshot(
             applicationContext,
             currentNotifications.size,
+            currentNotifications.map { resolveSourcePackage(it) },
         )
         currentNotifications.forEach { captureNotification(it) }
     }
@@ -270,25 +282,160 @@ class NotyNotificationListenerService : NotificationListenerService() {
         return packageName.startsWith("com.miui.") && hasOnlyFallbackContent
     }
 
-    private fun extractMessagingBody(extras: android.os.Bundle): String {
+
+    private fun appendCapturedNotification(
+        sourcePackage: String,
+        appName: String,
+        title: String,
+        body: String,
+        receivedAtEpochMs: Long,
+        captureId: String,
+    ): Boolean {
+        if (NotificationCaptureStore.isIgnored(applicationContext, captureId)) {
+            NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "ignorada")
+            return false
+        }
+
+        return NotificationCaptureStore.append(
+            context = applicationContext,
+            payload = mapOf(
+                "id" to captureId,
+                "appPackage" to sourcePackage,
+                "appName" to appName,
+                "title" to title,
+                "body" to body,
+                "receivedAtEpochMs" to receivedAtEpochMs,
+                "isUnread" to true,
+            ),
+        )
+    }
+
+    private fun notifyFlutter() {
+        val intent = android.content.Intent("dev.favo.noty.NEW_NOTIFICATION")
+            .setPackage(packageName)
+        sendBroadcast(intent)
+    }
+
+    private fun resolveTitle(extras: Bundle?): String {
+        val title = extras?.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim().orEmpty()
+        if (title.isNotEmpty()) {
+            return title
+        }
+
+        return extras?.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim().orEmpty()
+    }
+
+    private fun resolveBody(extras: Bundle?, notification: Notification): String {
+        var body = extras?.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+
+        if (body.isEmpty()) {
+            body = extras?.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim().orEmpty()
+        }
+
+        if (body.isEmpty() && extras != null) {
+            try {
+                val textLines = extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES)
+                if (!textLines.isNullOrEmpty()) {
+                    body = textLines.joinToString("\n") { it?.toString()?.trim().orEmpty() }
+                }
+            } catch (_: Exception) {
+                // Ignore.
+            }
+        }
+
+        if (body.isEmpty()) {
+            body = notification.tickerText?.toString()?.trim().orEmpty()
+        }
+
+        return body
+    }
+
+    private fun isGroupSummary(notification: Notification): Boolean {
+        return notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
+    }
+
+    private fun isCountOnlyMessagingSummary(packageName: String, body: String): Boolean {
+        val normalizedBody = body.trim().lowercase()
+        if (normalizedBody.isEmpty()) {
+            return false
+        }
+
+        val isKnownMessagingApp = packageName == "com.whatsapp" ||
+            packageName == "com.whatsapp.w4b" ||
+            packageName == "com.facebook.orca" ||
+            packageName == "org.telegram.messenger" ||
+            packageName == "com.instagram.android"
+
+        if (!isKnownMessagingApp) {
+            return false
+        }
+
+        return Regex("""^\d+\s+(new\s+messages?|nuevos?\s+mensajes?|mensajes?\s+nuevos?)\b""")
+            .containsMatchIn(normalizedBody)
+    }
+
+    private fun buildContentCaptureId(
+        statusBarNotification: StatusBarNotification,
+        title: String,
+        body: String,
+    ): String {
+        return "${statusBarNotification.key}:content:${stableHash("$title\n$body")}"
+    }
+
+    private fun extractMessagingCaptures(
+        extras: Bundle?,
+        fallbackTitle: String,
+        statusBarNotification: StatusBarNotification,
+    ): List<MessagingCapture> {
+        if (extras == null) {
+            return emptyList()
+        }
+
         return try {
             val messages = extras.getParcelableArray(Notification.EXTRA_MESSAGES)
             if (messages.isNullOrEmpty()) {
-                return ""
+                return emptyList()
             }
 
             messages.mapNotNull { rawMessage ->
-                val message = rawMessage as? android.os.Bundle ?: return@mapNotNull null
+                val message = rawMessage as? Bundle ?: return@mapNotNull null
                 val text = message.getCharSequence("text")?.toString()?.trim().orEmpty()
                 if (text.isEmpty()) {
                     return@mapNotNull null
                 }
 
                 val sender = message.getCharSequence("sender")?.toString()?.trim().orEmpty()
-                if (sender.isEmpty()) text else "$sender: $text"
-            }.distinct().joinToString("\n")
+                val messageTime = message.getLong("time", 0L).takeIf { it > 0L }
+                    ?: statusBarNotification.postTime
+                val title = fallbackTitle.ifEmpty { sender }
+                    .ifEmpty { resolveSourcePackage(statusBarNotification) }
+                val body = if (sender.isEmpty() || sender == title) text else "$sender: $text"
+                val captureId = "${statusBarNotification.key}:message:" +
+                    stableHash("$messageTime\n$sender\n$text")
+
+                MessagingCapture(
+                    captureId = captureId,
+                    title = title,
+                    body = body,
+                    receivedAtEpochMs = messageTime,
+                )
+            }.distinctBy { it.captureId }
         } catch (_: Exception) {
-            ""
+            emptyList()
         }
     }
+
+    private fun stableHash(value: String): String {
+        val bytes = MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8))
+        return bytes.take(12).joinToString("") { "%02x".format(it.toInt() and 0xff) }
+    }
+
+    private data class MessagingCapture(
+        val captureId: String,
+        val title: String,
+        val body: String,
+        val receivedAtEpochMs: Long,
+    )
+
 }

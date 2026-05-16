@@ -10,27 +10,47 @@ import org.json.JSONObject
 
 object NotificationCaptureStore {
     private const val PREFS_NAME = "noty_native_capture"
+    private const val RECENT_CAPTURE_WINDOW_MS = 6 * 60 * 60 * 1000L
+    private const val MAX_RECENT_CAPTURE_IDS = 300
     private const val KEY_PENDING_NOTIFICATIONS = "pending_notifications"
+    private const val KEY_RECENT_CAPTURE_IDS = "recent_capture_ids"
     private const val KEY_LISTENER_CONNECTED_AT = "listener_connected_at"
     private const val KEY_LAST_POSTED_AT = "last_posted_at"
     private const val KEY_LAST_CAPTURED_AT = "last_captured_at"
     private const val KEY_LISTENER_DISCONNECTED_AT = "listener_disconnected_at"
     private const val KEY_LAST_ACTIVE_SYNC_AT = "last_active_sync_at"
+    private const val KEY_LAST_ACTIVE_PACKAGES = "last_active_packages"
     private const val KEY_LAST_PACKAGE = "last_package"
     private const val KEY_POSTED_COUNT = "posted_count"
     private const val KEY_CAPTURED_COUNT = "captured_count"
     private const val KEY_LISTENER_DISCONNECTED_COUNT = "listener_disconnected_count"
     private const val KEY_LAST_ACTIVE_NOTIFICATION_COUNT = "last_active_notification_count"
+    private const val KEY_LAST_SKIPPED_AT = "last_skipped_at"
+    private const val KEY_LAST_SKIPPED_PACKAGE = "last_skipped_package"
+    private const val KEY_LAST_SKIPPED_REASON = "last_skipped_reason"
+    private const val KEY_SKIPPED_COUNT = "skipped_count"
     private const val KEY_LAST_ERROR = "last_error"
     private const val KEY_IGNORED_NOTIFICATION_IDS = "ignored_notification_ids"
     private const val KEY_LISTENER_REPAIR_REQUESTED_AT = "listener_repair_requested_at"
     private const val KEY_LISTENER_REPAIR_COUNT = "listener_repair_count"
 
-    fun append(context: Context, payload: Map<String, Any?>) {
+    fun append(context: Context, payload: Map<String, Any?>): Boolean {
         migrateIfNeeded(context)
+        val captureId = payload["id"]?.toString().orEmpty()
+        val packageName = payload["appPackage"]?.toString().orEmpty()
+
+        if (captureId.isNotEmpty() && wasRecentlyCaptured(context, captureId)) {
+            markSkipped(context, packageName, "duplicado-reciente")
+            return false
+        }
+
         val dbHelper = NativeCaptureDatabaseHelper(context)
         dbHelper.append(payload)
-        markCaptured(context, payload["appPackage"]?.toString().orEmpty())
+        if (captureId.isNotEmpty()) {
+            markRecentlyCaptured(context, captureId)
+        }
+        markCaptured(context, packageName)
+        return true
     }
 
     fun drain(context: Context): List<Map<String, Any?>> {
@@ -82,12 +102,27 @@ object NotificationCaptureStore {
             .apply()
     }
 
-    fun markActiveNotificationSnapshot(context: Context, count: Int) {
+    fun markActiveNotificationSnapshot(
+        context: Context,
+        count: Int,
+        packageNames: List<String> = emptyList(),
+    ) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putLong(KEY_LAST_ACTIVE_SYNC_AT, System.currentTimeMillis())
             .putInt(KEY_LAST_ACTIVE_NOTIFICATION_COUNT, count)
+            .putString(KEY_LAST_ACTIVE_PACKAGES, packageNames.distinct().joinToString(", "))
             .remove(KEY_LAST_ERROR)
+            .apply()
+    }
+
+    fun markSkipped(context: Context, packageName: String, reason: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putLong(KEY_LAST_SKIPPED_AT, System.currentTimeMillis())
+            .putString(KEY_LAST_SKIPPED_PACKAGE, packageName)
+            .putString(KEY_LAST_SKIPPED_REASON, reason)
+            .putInt(KEY_SKIPPED_COUNT, prefs.getInt(KEY_SKIPPED_COUNT, 0) + 1)
             .apply()
     }
 
@@ -113,9 +148,14 @@ object NotificationCaptureStore {
             "lastCapturedAt" to prefs.getLong(KEY_LAST_CAPTURED_AT, 0L),
             "lastActiveSyncAt" to prefs.getLong(KEY_LAST_ACTIVE_SYNC_AT, 0L),
             "lastActiveNotificationCount" to prefs.getInt(KEY_LAST_ACTIVE_NOTIFICATION_COUNT, 0),
+            "lastActivePackages" to prefs.getString(KEY_LAST_ACTIVE_PACKAGES, ""),
             "lastPackage" to prefs.getString(KEY_LAST_PACKAGE, ""),
             "postedCount" to prefs.getInt(KEY_POSTED_COUNT, 0),
             "capturedCount" to prefs.getInt(KEY_CAPTURED_COUNT, 0),
+            "skippedCount" to prefs.getInt(KEY_SKIPPED_COUNT, 0),
+            "lastSkippedAt" to prefs.getLong(KEY_LAST_SKIPPED_AT, 0L),
+            "lastSkippedPackage" to prefs.getString(KEY_LAST_SKIPPED_PACKAGE, ""),
+            "lastSkippedReason" to prefs.getString(KEY_LAST_SKIPPED_REASON, ""),
             "listenerRepairRequestedAt" to prefs.getLong(KEY_LISTENER_REPAIR_REQUESTED_AT, 0L),
             "listenerRepairCount" to prefs.getInt(KEY_LISTENER_REPAIR_COUNT, 0),
             "isInteractive" to (powerManager?.isInteractive ?: false),
@@ -170,6 +210,57 @@ object NotificationCaptureStore {
             .putInt(KEY_CAPTURED_COUNT, prefs.getInt(KEY_CAPTURED_COUNT, 0) + 1)
             .remove(KEY_LAST_ERROR)
             .apply()
+    }
+
+    private fun wasRecentlyCaptured(context: Context, captureId: String): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val lastCapturedAt = loadRecentCaptureIds(prefs.getString(KEY_RECENT_CAPTURE_IDS, null))[captureId]
+            ?: return false
+
+        return System.currentTimeMillis() - lastCapturedAt < RECENT_CAPTURE_WINDOW_MS
+    }
+
+    private fun markRecentlyCaptured(context: Context, captureId: String) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val recent = loadRecentCaptureIds(prefs.getString(KEY_RECENT_CAPTURE_IDS, null))
+        val cutoff = now - RECENT_CAPTURE_WINDOW_MS
+
+        recent.entries.removeAll { it.value < cutoff }
+        recent[captureId] = now
+
+        while (recent.size > MAX_RECENT_CAPTURE_IDS) {
+            val oldest = recent.minByOrNull { it.value } ?: break
+            recent.remove(oldest.key)
+        }
+
+        val json = JSONObject()
+        for ((id, timestamp) in recent) {
+            json.put(id, timestamp)
+        }
+
+        prefs.edit()
+            .putString(KEY_RECENT_CAPTURE_IDS, json.toString())
+            .apply()
+    }
+
+    private fun loadRecentCaptureIds(rawJson: String?): MutableMap<String, Long> {
+        val result = mutableMapOf<String, Long>()
+        if (rawJson.isNullOrBlank()) {
+            return result
+        }
+
+        return try {
+            val json = JSONObject(rawJson)
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                result[key] = json.optLong(key, 0L)
+            }
+            result
+        } catch (_: Exception) {
+            mutableMapOf()
+        }
     }
 
     private fun migrateIfNeeded(context: Context) {
