@@ -2,6 +2,8 @@ package dev.favo.noty
 
 import android.content.ComponentName
 import android.content.Context
+import android.app.KeyguardManager
+import android.os.PowerManager
 import android.provider.Settings
 import org.json.JSONArray
 import org.json.JSONObject
@@ -12,9 +14,13 @@ object NotificationCaptureStore {
     private const val KEY_LISTENER_CONNECTED_AT = "listener_connected_at"
     private const val KEY_LAST_POSTED_AT = "last_posted_at"
     private const val KEY_LAST_CAPTURED_AT = "last_captured_at"
+    private const val KEY_LISTENER_DISCONNECTED_AT = "listener_disconnected_at"
+    private const val KEY_LAST_ACTIVE_SYNC_AT = "last_active_sync_at"
     private const val KEY_LAST_PACKAGE = "last_package"
     private const val KEY_POSTED_COUNT = "posted_count"
     private const val KEY_CAPTURED_COUNT = "captured_count"
+    private const val KEY_LISTENER_DISCONNECTED_COUNT = "listener_disconnected_count"
+    private const val KEY_LAST_ACTIVE_NOTIFICATION_COUNT = "last_active_notification_count"
     private const val KEY_LAST_ERROR = "last_error"
     private const val KEY_IGNORED_NOTIFICATION_IDS = "ignored_notification_ids"
     private const val KEY_LISTENER_REPAIR_REQUESTED_AT = "listener_repair_requested_at"
@@ -55,12 +61,32 @@ object NotificationCaptureStore {
             .apply()
     }
 
+    fun markListenerDisconnected(context: Context) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putLong(KEY_LISTENER_DISCONNECTED_AT, System.currentTimeMillis())
+            .putInt(
+                KEY_LISTENER_DISCONNECTED_COUNT,
+                prefs.getInt(KEY_LISTENER_DISCONNECTED_COUNT, 0) + 1,
+            )
+            .apply()
+    }
+
     fun markPosted(context: Context, packageName: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit()
             .putLong(KEY_LAST_POSTED_AT, System.currentTimeMillis())
             .putString(KEY_LAST_PACKAGE, packageName)
             .putInt(KEY_POSTED_COUNT, prefs.getInt(KEY_POSTED_COUNT, 0) + 1)
+            .remove(KEY_LAST_ERROR)
+            .apply()
+    }
+
+    fun markActiveNotificationSnapshot(context: Context, count: Int) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_ACTIVE_SYNC_AT, System.currentTimeMillis())
+            .putInt(KEY_LAST_ACTIVE_NOTIFICATION_COUNT, count)
             .remove(KEY_LAST_ERROR)
             .apply()
     }
@@ -74,17 +100,27 @@ object NotificationCaptureStore {
 
     fun diagnostics(context: Context): Map<String, Any?> {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+        val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
+
         return mapOf(
             "listenerEnabled" to isListenerEnabled(context),
             "listenerConnected" to NotyNotificationListenerService.isConnected(),
             "listenerConnectedAt" to prefs.getLong(KEY_LISTENER_CONNECTED_AT, 0L),
+            "listenerDisconnectedAt" to prefs.getLong(KEY_LISTENER_DISCONNECTED_AT, 0L),
+            "listenerDisconnectedCount" to prefs.getInt(KEY_LISTENER_DISCONNECTED_COUNT, 0),
             "lastPostedAt" to prefs.getLong(KEY_LAST_POSTED_AT, 0L),
             "lastCapturedAt" to prefs.getLong(KEY_LAST_CAPTURED_AT, 0L),
+            "lastActiveSyncAt" to prefs.getLong(KEY_LAST_ACTIVE_SYNC_AT, 0L),
+            "lastActiveNotificationCount" to prefs.getInt(KEY_LAST_ACTIVE_NOTIFICATION_COUNT, 0),
             "lastPackage" to prefs.getString(KEY_LAST_PACKAGE, ""),
             "postedCount" to prefs.getInt(KEY_POSTED_COUNT, 0),
             "capturedCount" to prefs.getInt(KEY_CAPTURED_COUNT, 0),
             "listenerRepairRequestedAt" to prefs.getLong(KEY_LISTENER_REPAIR_REQUESTED_AT, 0L),
             "listenerRepairCount" to prefs.getInt(KEY_LISTENER_REPAIR_COUNT, 0),
+            "isInteractive" to (powerManager?.isInteractive ?: false),
+            "isDeviceLocked" to (keyguardManager?.isDeviceLocked ?: false),
+            "isKeyguardLocked" to (keyguardManager?.isKeyguardLocked ?: false),
             "lastError" to prefs.getString(KEY_LAST_ERROR, ""),
         )
     }

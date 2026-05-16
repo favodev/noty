@@ -164,10 +164,111 @@ class _NotificationPermissionCard extends StatelessWidget {
                 label: const Text('Seleccionar apps a monitorear'),
               ),
             ),
+            const SizedBox(height: 12),
+            _DiagnosticsPanel(diagnostics: diagnostics),
           ],
         ),
       ),
     );
+  }
+}
+
+class _DiagnosticsPanel extends StatelessWidget {
+  const _DiagnosticsPanel({required this.diagnostics});
+
+  final Map<String, Object?> diagnostics;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rows = <String, String>{
+      'Pantalla activa': _boolText(diagnostics['isInteractive']),
+      'Dispositivo bloqueado': _boolText(diagnostics['isDeviceLocked']),
+      'Keyguard activo': _boolText(diagnostics['isKeyguardLocked']),
+      'Eventos recibidos': '${diagnostics['postedCount'] ?? 0}',
+      'Eventos guardados': '${diagnostics['capturedCount'] ?? 0}',
+      'Desconexiones': '${diagnostics['listenerDisconnectedCount'] ?? 0}',
+      'Activas vistas': '${diagnostics['lastActiveNotificationCount'] ?? 0}',
+      'Última app': _emptyText(diagnostics['lastPackage']),
+      'Último evento': _timeText(diagnostics['lastPostedAt']),
+      'Última captura': _timeText(diagnostics['lastCapturedAt']),
+      'Última sync activa': _timeText(diagnostics['lastActiveSyncAt']),
+      'Última desconexión': _timeText(diagnostics['listenerDisconnectedAt']),
+    };
+
+    final lastError = '${diagnostics['lastError'] ?? ''}'.trim();
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Diagnóstico',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            for (final row in rows.entries)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        row.key,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    Text(row.value, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+            if (lastError.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Error: $lastError',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _boolText(Object? value) => value == true ? 'Sí' : 'No';
+
+  String _emptyText(Object? value) {
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? '—' : text;
+  }
+
+  String _timeText(Object? value) {
+    final epochMs = value is int
+        ? value
+        : value is num
+        ? value.toInt()
+        : int.tryParse(value?.toString() ?? '');
+
+    if (epochMs == null || epochMs <= 0) {
+      return '—';
+    }
+
+    final time = DateTime.fromMillisecondsSinceEpoch(epochMs);
+    return '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}:'
+        '${time.second.toString().padLeft(2, '0')}';
   }
 }
 

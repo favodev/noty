@@ -98,6 +98,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerDisconnected() {
         activeService = null
+        NotificationCaptureStore.markListenerDisconnected(applicationContext)
         requestRebindAfterDisconnect(applicationContext)
         super.onListenerDisconnected()
     }
@@ -203,7 +204,12 @@ class NotyNotificationListenerService : NotificationListenerService() {
 
     private fun captureActiveNotifications() {
         NotificationCaptureStore.markListenerConnected(applicationContext)
-        activeNotifications?.forEach { captureNotification(it) }
+        val currentNotifications = activeNotifications.orEmpty()
+        NotificationCaptureStore.markActiveNotificationSnapshot(
+            applicationContext,
+            currentNotifications.size,
+        )
+        currentNotifications.forEach { captureNotification(it) }
     }
 
     private fun resolveSourcePackage(statusBarNotification: StatusBarNotification): String {
