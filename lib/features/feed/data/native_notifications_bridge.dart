@@ -118,6 +118,31 @@ class NativeNotificationsBridge {
     }
   }
 
+  Future<Map<String, Uint8List>> getAppIcons(List<String> packages) async {
+    if (!_supportsNativeBridge || packages.isEmpty) {
+      return const <String, Uint8List>{};
+    }
+
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getAppIcons',
+        {'packages': packages},
+      );
+      if (result == null) return const <String, Uint8List>{};
+
+      return result.map((key, value) {
+        final bytes = value is Uint8List
+            ? value
+            : Uint8List.fromList((value as List<dynamic>).cast<int>());
+        return MapEntry(key.toString(), bytes);
+      });
+    } on MissingPluginException {
+      return const <String, Uint8List>{};
+    } on PlatformException {
+      return const <String, Uint8List>{};
+    }
+  }
+
   Future<void> updateMonitoredPackages(List<String> packages) async {
     if (!_supportsNativeBridge) {
       return;
@@ -190,6 +215,7 @@ class NativeNotificationsBridge {
       id: _asString(
         raw['id'],
       ).ifEmpty(() => 'native-${DateTime.now().microsecondsSinceEpoch}'),
+      appPackage: packageName,
       appName: appName.ifEmpty(() => _displayNameFromPackage(packageName)),
       title: title,
       body: body,

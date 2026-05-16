@@ -83,6 +83,11 @@ class MainActivity : FlutterActivity() {
 						result.success(AppFilterStore.getInstalledApps(applicationContext))
 					}
 
+					"getAppIcons" -> {
+						val packages = call.argument<List<String>>("packages") ?: emptyList()
+						result.success(AppFilterStore.getAppIcons(applicationContext, packages))
+					}
+
 					"updateMonitoredPackages" -> {
 						val packages = call.argument<List<String>>("packages") ?: emptyList()
 						AppFilterStore.updateMonitoredPackages(applicationContext, packages)

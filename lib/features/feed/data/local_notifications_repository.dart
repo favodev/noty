@@ -4,9 +4,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 
 class LocalNotificationsRepository {
-  LocalNotificationsRepository({
-    String databaseName = 'noty.db',
-  }) : _databaseName = databaseName;
+  LocalNotificationsRepository({String databaseName = 'noty.db'})
+    : _databaseName = databaseName;
 
   static const String _tableName = 'notifications';
 
@@ -29,10 +28,7 @@ class LocalNotificationsRepository {
 
   Future<List<NotificationItem>> getAll() async {
     final database = await _db;
-    final rows = await database.query(
-      _tableName,
-      orderBy: 'received_at DESC',
-    );
+    final rows = await database.query(_tableName, orderBy: 'received_at DESC');
 
     return rows.map(_fromMap).toList();
   }
@@ -67,11 +63,7 @@ class LocalNotificationsRepository {
 
   Future<void> deleteItem(String id) async {
     final database = await _db;
-    await database.delete(
-      _tableName,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await database.delete(_tableName, where: 'id = ?', whereArgs: [id]);
   }
 
   Future<void> markAsRead(String id) async {
@@ -113,11 +105,12 @@ class LocalNotificationsRepository {
 
     return openDatabase(
       dbPath,
-      version: 3,
+      version: 4,
       onCreate: (database, _) async {
         await database.execute('''
           CREATE TABLE $_tableName (
             id TEXT PRIMARY KEY,
+            app_package TEXT NOT NULL DEFAULT '',
             app_name TEXT NOT NULL,
             title TEXT NOT NULL,
             body TEXT NOT NULL,
@@ -131,6 +124,7 @@ class LocalNotificationsRepository {
           await database.execute('''
             CREATE TABLE ${_tableName}_local_only (
               id TEXT PRIMARY KEY,
+              app_package TEXT NOT NULL DEFAULT '',
               app_name TEXT NOT NULL,
               title TEXT NOT NULL,
               body TEXT NOT NULL,
@@ -140,12 +134,18 @@ class LocalNotificationsRepository {
           ''');
           await database.execute('''
             INSERT OR REPLACE INTO ${_tableName}_local_only
-              (id, app_name, title, body, received_at, is_unread)
-            SELECT id, app_name, title, body, received_at, is_unread
+              (id, app_package, app_name, title, body, received_at, is_unread)
+            SELECT id, '', app_name, title, body, received_at, is_unread
             FROM $_tableName
           ''');
           await database.execute('DROP TABLE $_tableName');
-          await database.execute('ALTER TABLE ${_tableName}_local_only RENAME TO $_tableName');
+          await database.execute(
+            'ALTER TABLE ${_tableName}_local_only RENAME TO $_tableName',
+          );
+        } else if (oldVersion < 4) {
+          await database.execute(
+            "ALTER TABLE $_tableName ADD COLUMN app_package TEXT NOT NULL DEFAULT ''",
+          );
         }
       },
     );
@@ -163,10 +163,13 @@ class LocalNotificationsRepository {
   NotificationItem _fromMap(Map<String, Object?> row) {
     return NotificationItem(
       id: row['id']! as String,
+      appPackage: row['app_package'] as String? ?? '',
       appName: row['app_name']! as String,
       title: row['title']! as String,
       body: row['body']! as String,
-      receivedAt: DateTime.fromMillisecondsSinceEpoch(row['received_at']! as int),
+      receivedAt: DateTime.fromMillisecondsSinceEpoch(
+        row['received_at']! as int,
+      ),
       isUnread: (row['is_unread']! as int) == 1,
     );
   }
@@ -174,6 +177,7 @@ class LocalNotificationsRepository {
   Map<String, Object?> _toMap(NotificationItem item) {
     return <String, Object?>{
       'id': item.id,
+      'app_package': item.appPackage,
       'app_name': item.appName,
       'title': item.title,
       'body': item.body,

@@ -1,5 +1,6 @@
+import 'dart:typed_data';
+
 import 'package:noty/features/feed/data/local_notifications_repository.dart';
-import 'package:noty/features/feed/data/mock_notifications.dart';
 import 'package:noty/features/feed/data/native_notifications_bridge.dart';
 import 'package:noty/features/feed/data/notification_archive_service.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
@@ -37,8 +38,8 @@ class NotyShellService {
     required bool enableLocalPersistence,
   }) async {
     if (!enableLocalPersistence) {
-      return NotyShellLoadResult(
-        notifications: buildMockNotifications(),
+      return const NotyShellLoadResult(
+        notifications: <NotificationItem>[],
         listenerEnabled: false,
       );
     }
@@ -80,6 +81,10 @@ class NotyShellService {
 
   Future<List<String>> getMonitoredPackages() async {
     return _nativeBridge.getMonitoredPackages();
+  }
+
+  Future<Map<String, Uint8List>> getAppIcons(List<String> packages) async {
+    return _nativeBridge.getAppIcons(packages);
   }
 
   Future<Map<String, Object?>> getNativeDiagnostics() async {

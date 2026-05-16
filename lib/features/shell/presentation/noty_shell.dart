@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
@@ -35,6 +36,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   bool _isRefreshingNotifications = false;
   String? _notificationsError;
   Map<String, Object?> _nativeDiagnostics = const <String, Object?>{};
+  Map<String, Uint8List> _appIcons = const <String, Uint8List>{};
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
   static const List<String> _titles = <String>['Inicio', 'Ajustes'];
@@ -111,6 +113,15 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       final nativeDiagnostics = widget.enableLocalPersistence
           ? await _shellService.getNativeDiagnostics()
           : const <String, Object?>{};
+      final appIcons = widget.enableLocalPersistence
+          ? await _shellService.getAppIcons(
+              result.notifications
+                  .map((item) => item.appPackage)
+                  .where((packageName) => packageName.isNotEmpty)
+                  .toSet()
+                  .toList(),
+            )
+          : const <String, Uint8List>{};
 
       if (!mounted) {
         return;
@@ -122,6 +133,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         _isNotificationListenerEnabled = result.listenerEnabled;
         _notificationsError = result.errorMessage;
         _nativeDiagnostics = nativeDiagnostics;
+        _appIcons = appIcons;
       });
     } finally {
       _isRefreshingNotifications = false;
@@ -208,6 +220,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
     return <Widget>[
       FeedPage(
         notifications: _notifications,
+        appIcons: _appIcons,
         isLoading: _isLoadingNotifications,
         errorMessage: _notificationsError,
         isNotificationListenerEnabled: _isNotificationListenerEnabled,

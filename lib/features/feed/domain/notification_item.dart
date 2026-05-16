@@ -1,6 +1,7 @@
 class NotificationItem {
   const NotificationItem({
     required this.id,
+    required this.appPackage,
     required this.appName,
     required this.title,
     required this.body,
@@ -9,6 +10,7 @@ class NotificationItem {
   });
 
   final String id;
+  final String appPackage;
   final String appName;
   final String title;
   final String body;
@@ -29,6 +31,7 @@ class NotificationItem {
   Map<String, Object?> toJson() {
     return <String, Object?>{
       'id': id,
+      'appPackage': appPackage,
       'appName': appName,
       'title': title,
       'body': body,
@@ -40,6 +43,7 @@ class NotificationItem {
   factory NotificationItem.fromJson(Map<String, Object?> json) {
     return NotificationItem(
       id: json['id'] as String,
+      appPackage: json['appPackage'] as String? ?? '',
       appName: json['appName'] as String,
       title: json['title'] as String,
       body: json['body'] as String,

@@ -6,6 +6,7 @@ void main() {
     test('creates with required fields', () {
       final item = NotificationItem(
         id: 'test-1',
+        appPackage: 'com.whatsapp',
         appName: 'WhatsApp',
         title: 'New message',
         body: 'Hello from test',
@@ -14,6 +15,7 @@ void main() {
       );
 
       expect(item.id, 'test-1');
+      expect(item.appPackage, 'com.whatsapp');
       expect(item.appName, 'WhatsApp');
       expect(item.title, 'New message');
       expect(item.body, 'Hello from test');
@@ -54,6 +56,7 @@ void main() {
       final restored = NotificationItem.fromJson(item.toJson());
 
       expect(restored.id, item.id);
+      expect(restored.appPackage, item.appPackage);
       expect(restored.appName, item.appName);
       expect(restored.title, item.title);
       expect(restored.body, item.body);
@@ -65,6 +68,7 @@ void main() {
 
 NotificationItem _createItem({
   String id = 'test',
+  String appPackage = 'dev.test.app',
   String appName = 'TestApp',
   String title = 'Test Title',
   String body = 'Test body',
@@ -72,6 +76,7 @@ NotificationItem _createItem({
 }) {
   return NotificationItem(
     id: id,
+    appPackage: appPackage,
     appName: appName,
     title: title,
     body: body,

@@ -2,6 +2,11 @@ package dev.favo.noty
 
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import java.io.ByteArrayOutputStream
 
 object AppFilterStore {
     private const val PREFS_NAME = "noty_app_filters"
@@ -78,6 +83,23 @@ object AppFilterStore {
         return result.sortedBy { it["appName"]?.lowercase() }
     }
 
+    fun getAppIcons(context: Context, packageNames: List<String>): Map<String, ByteArray> {
+        val result = mutableMapOf<String, ByteArray>()
+        val pm = context.packageManager
+
+        for (packageName in packageNames.distinct()) {
+            val icon = try {
+                pm.getApplicationIcon(packageName)
+            } catch (_: Exception) {
+                null
+            } ?: continue
+
+            result[packageName] = drawableToPngBytes(icon)
+        }
+
+        return result
+    }
+
     private fun isAllowedDefaultNotificationSource(context: Context, packageName: String): Boolean {
         if (packageName == context.packageName) {
             return false
@@ -100,6 +122,24 @@ object AppFilterStore {
 
     private fun isVisibleInPicker(pm: PackageManager, appInfo: android.content.pm.ApplicationInfo): Boolean {
         return pm.getLaunchIntentForPackage(appInfo.packageName) != null
+    }
+
+    private fun drawableToPngBytes(drawable: Drawable): ByteArray {
+        val bitmap = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+            drawable.bitmap
+        } else {
+            val size = 96
+            Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { bitmap ->
+                val canvas = Canvas(bitmap)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+            }
+        }
+
+        return ByteArrayOutputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+            output.toByteArray()
+        }
     }
 
     private fun migrateOldFilterIfNeeded(context: Context) {

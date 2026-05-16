@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 
@@ -5,6 +7,7 @@ class FeedPage extends StatefulWidget {
   const FeedPage({
     super.key,
     required this.notifications,
+    required this.appIcons,
     required this.isLoading,
     this.errorMessage,
     required this.isNotificationListenerEnabled,
@@ -15,6 +18,7 @@ class FeedPage extends StatefulWidget {
   });
 
   final List<NotificationItem> notifications;
+  final Map<String, Uint8List> appIcons;
   final bool isLoading;
   final String? errorMessage;
   final bool isNotificationListenerEnabled;
@@ -210,6 +214,9 @@ class _FeedPageState extends State<FeedPage> {
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
+                      avatar: _appIconForName(appName) == null
+                          ? null
+                          : _AppIcon(bytes: _appIconForName(appName), size: 18),
                       label: Text(appName),
                       selected: _selectedApp == appName,
                       onSelected: (_) {
@@ -254,6 +261,7 @@ class _FeedPageState extends State<FeedPage> {
                             final item = items[index];
                             return _NotificationCard(
                               item: item,
+                              appIconBytes: widget.appIcons[item.appPackage],
                               onMarkAsRead: widget.onMarkAsRead,
                               onDelete: widget.onDeleteNotification,
                             );
@@ -267,16 +275,32 @@ class _FeedPageState extends State<FeedPage> {
       ),
     );
   }
+
+  Uint8List? _appIconForName(String appName) {
+    if (appName == 'Todas') {
+      return null;
+    }
+
+    for (final item in widget.notifications) {
+      if (item.appName == appName) {
+        return widget.appIcons[item.appPackage];
+      }
+    }
+
+    return null;
+  }
 }
 
 class _NotificationCard extends StatelessWidget {
   const _NotificationCard({
     required this.item,
+    required this.appIconBytes,
     required this.onMarkAsRead,
     required this.onDelete,
   });
 
   final NotificationItem item;
+  final Uint8List? appIconBytes;
   final Future<void> Function(String id) onMarkAsRead;
   final Future<void> Function(String id) onDelete;
 
@@ -307,10 +331,9 @@ class _NotificationCard extends StatelessWidget {
                   color: iconBackground,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.notifications_active_outlined,
-                  size: 20,
-                  color: item.isUnread
+                child: _AppIcon(
+                  bytes: appIconBytes,
+                  fallbackColor: item.isUnread
                       ? colorScheme.tertiary
                       : colorScheme.onSurfaceVariant,
                 ),
@@ -432,6 +455,37 @@ class _NotificationCard extends StatelessWidget {
     }
 
     return '${difference.inDays}d';
+  }
+}
+
+class _AppIcon extends StatelessWidget {
+  const _AppIcon({required this.bytes, this.size = 24, this.fallbackColor});
+
+  final Uint8List? bytes;
+  final double size;
+  final Color? fallbackColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconBytes = bytes;
+    if (iconBytes == null || iconBytes.isEmpty) {
+      return Icon(
+        Icons.notifications_active_outlined,
+        size: size * 0.84,
+        color: fallbackColor,
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.22),
+      child: Image.memory(
+        iconBytes,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+      ),
+    );
   }
 }
 
