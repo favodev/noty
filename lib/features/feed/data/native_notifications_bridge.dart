@@ -2,6 +2,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
 
+class MediaCaptureSettings {
+  const MediaCaptureSettings({
+    this.saveStickers = false,
+    this.savePhotos = false,
+  });
+
+  final bool saveStickers;
+  final bool savePhotos;
+
+  bool get enabled => saveStickers || savePhotos;
+}
+
 class NativeNotificationsBridge {
   static const MethodChannel _channel = MethodChannel(
     'noty/native_notifications',
@@ -76,6 +88,43 @@ class NativeNotificationsBridge {
       return const <String, Object?>{};
     } on PlatformException {
       return const <String, Object?>{};
+    }
+  }
+
+  Future<MediaCaptureSettings> getMediaCaptureSettings() async {
+    if (!_supportsNativeBridge) {
+      return const MediaCaptureSettings();
+    }
+
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>(
+        'getMediaCaptureSettings',
+      );
+      return MediaCaptureSettings(
+        saveStickers: _asBool(result?['saveStickers']) ?? false,
+        savePhotos: _asBool(result?['savePhotos']) ?? false,
+      );
+    } on MissingPluginException {
+      return const MediaCaptureSettings();
+    } on PlatformException {
+      return const MediaCaptureSettings();
+    }
+  }
+
+  Future<void> updateMediaCaptureSettings(MediaCaptureSettings settings) async {
+    if (!_supportsNativeBridge) {
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<void>('updateMediaCaptureSettings', {
+        'saveStickers': settings.saveStickers,
+        'savePhotos': settings.savePhotos,
+      });
+    } on MissingPluginException {
+      // No-op in unsupported targets.
+    } on PlatformException {
+      // No-op.
     }
   }
 
@@ -221,6 +270,10 @@ class NativeNotificationsBridge {
       body: body,
       receivedAt: DateTime.fromMillisecondsSinceEpoch(receivedAtEpochMs),
       isUnread: _asBool(raw['isUnread']) ?? true,
+      mediaPath: _asNullableString(raw['mediaPath']),
+      mediaType: _asNullableString(raw['mediaType']),
+      mediaMimeType: _asNullableString(raw['mediaMimeType']),
+      mediaSizeBytes: _asInt(raw['mediaSizeBytes']),
     );
   }
 
@@ -243,6 +296,11 @@ class NativeNotificationsBridge {
       return '';
     }
     return value.toString();
+  }
+
+  String? _asNullableString(Object? value) {
+    final text = _asString(value).trim();
+    return text.isEmpty ? null : text;
   }
 
   int? _asInt(Object? value) {

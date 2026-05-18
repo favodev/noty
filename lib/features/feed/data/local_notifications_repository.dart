@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart';
 
@@ -35,11 +37,48 @@ class LocalNotificationsRepository {
 
   Future<void> upsert(NotificationItem item) async {
     final database = await _db;
+    final existingRows = await database.query(
+      _tableName,
+      columns: const <String>['is_unread', 'media_path'],
+      where: 'id = ?',
+      whereArgs: <Object?>[item.id],
+      limit: 1,
+    );
+    final shouldPreserveReadState =
+        existingRows.isNotEmpty && existingRows.first['is_unread'] == 0;
+    final previousMediaPath = existingRows.isEmpty
+        ? null
+        : existingRows.first['media_path']?.toString();
+
     await database.insert(
       _tableName,
-      _toMap(item),
+      _toMap(
+        shouldPreserveReadState
+            ? NotificationItem(
+                id: item.id,
+                appPackage: item.appPackage,
+                appName: item.appName,
+                title: item.title,
+                body: item.body,
+                receivedAt: item.receivedAt,
+                isUnread: false,
+                mediaPath: item.mediaPath,
+                mediaType: item.mediaType,
+                mediaMimeType: item.mediaMimeType,
+                mediaSizeBytes: item.mediaSizeBytes,
+              )
+            : item,
+      ),
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
+
+    if (previousMediaPath != null &&
+        previousMediaPath != item.mediaPath &&
+        previousMediaPath.trim().isNotEmpty) {
+      await _deleteMediaFiles(<Map<String, Object?>>[
+        <String, Object?>{'media_path': previousMediaPath},
+      ]);
+    }
   }
 
   Future<void> importMany(List<NotificationItem> items) async {
@@ -63,7 +102,15 @@ class LocalNotificationsRepository {
 
   Future<void> deleteItem(String id) async {
     final database = await _db;
+    final rows = await database.query(
+      _tableName,
+      columns: const <String>['media_path'],
+      where: 'id = ?',
+      whereArgs: <Object?>[id],
+      limit: 1,
+    );
     await database.delete(_tableName, where: 'id = ?', whereArgs: [id]);
+    await _deleteMediaFiles(rows);
   }
 
   Future<void> markAsRead(String id) async {
@@ -78,7 +125,12 @@ class LocalNotificationsRepository {
 
   Future<void> deleteAll() async {
     final database = await _db;
+    final rows = await database.query(
+      _tableName,
+      columns: const <String>['media_path'],
+    );
     await database.delete(_tableName);
+    await _deleteMediaFiles(rows);
   }
 
   Future<void> seedIfEmpty(List<NotificationItem> seedItems) async {
@@ -105,7 +157,7 @@ class LocalNotificationsRepository {
 
     return openDatabase(
       dbPath,
-      version: 4,
+      version: 5,
       onCreate: (database, _) async {
         await database.execute('''
           CREATE TABLE $_tableName (
@@ -115,7 +167,11 @@ class LocalNotificationsRepository {
             title TEXT NOT NULL,
             body TEXT NOT NULL,
             received_at INTEGER NOT NULL,
-            is_unread INTEGER NOT NULL
+            is_unread INTEGER NOT NULL,
+            media_path TEXT,
+            media_type TEXT,
+            media_mime_type TEXT,
+            media_size_bytes INTEGER
           )
         ''');
       },
@@ -129,22 +185,44 @@ class LocalNotificationsRepository {
               title TEXT NOT NULL,
               body TEXT NOT NULL,
               received_at INTEGER NOT NULL,
-              is_unread INTEGER NOT NULL
+              is_unread INTEGER NOT NULL,
+              media_path TEXT,
+              media_type TEXT,
+              media_mime_type TEXT,
+              media_size_bytes INTEGER
             )
           ''');
           await database.execute('''
             INSERT OR REPLACE INTO ${_tableName}_local_only
-              (id, app_package, app_name, title, body, received_at, is_unread)
-            SELECT id, '', app_name, title, body, received_at, is_unread
+              (id, app_package, app_name, title, body, received_at, is_unread,
+               media_path, media_type, media_mime_type, media_size_bytes)
+            SELECT id, '', app_name, title, body, received_at, is_unread,
+                   NULL, NULL, NULL, NULL
             FROM $_tableName
           ''');
           await database.execute('DROP TABLE $_tableName');
           await database.execute(
             'ALTER TABLE ${_tableName}_local_only RENAME TO $_tableName',
           );
-        } else if (oldVersion < 4) {
+          return;
+        }
+        if (oldVersion >= 3 && oldVersion < 4) {
           await database.execute(
             "ALTER TABLE $_tableName ADD COLUMN app_package TEXT NOT NULL DEFAULT ''",
+          );
+        }
+        if (oldVersion < 5) {
+          await database.execute(
+            "ALTER TABLE $_tableName ADD COLUMN media_path TEXT",
+          );
+          await database.execute(
+            "ALTER TABLE $_tableName ADD COLUMN media_type TEXT",
+          );
+          await database.execute(
+            "ALTER TABLE $_tableName ADD COLUMN media_mime_type TEXT",
+          );
+          await database.execute(
+            "ALTER TABLE $_tableName ADD COLUMN media_size_bytes INTEGER",
           );
         }
       },
@@ -171,6 +249,10 @@ class LocalNotificationsRepository {
         row['received_at']! as int,
       ),
       isUnread: (row['is_unread']! as int) == 1,
+      mediaPath: row['media_path'] as String?,
+      mediaType: row['media_type'] as String?,
+      mediaMimeType: row['media_mime_type'] as String?,
+      mediaSizeBytes: row['media_size_bytes'] as int?,
     );
   }
 
@@ -183,6 +265,29 @@ class LocalNotificationsRepository {
       'body': item.body,
       'received_at': item.receivedAt.millisecondsSinceEpoch,
       'is_unread': item.isUnread ? 1 : 0,
+      'media_path': item.mediaPath,
+      'media_type': item.mediaType,
+      'media_mime_type': item.mediaMimeType,
+      'media_size_bytes': item.mediaSizeBytes,
     };
+  }
+
+  Future<void> _deleteMediaFiles(List<Map<String, Object?>> rows) async {
+    final paths = rows
+        .map((row) => row['media_path']?.toString().trim() ?? '')
+        .where((path) => path.isNotEmpty)
+        .toSet();
+
+    for (final path in paths) {
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {
+        // Best effort cleanup. The database operation should not fail because
+        // a media file was already removed by Android or the user.
+      }
+    }
   }
 }

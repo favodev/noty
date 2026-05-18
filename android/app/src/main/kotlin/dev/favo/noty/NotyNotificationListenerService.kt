@@ -4,11 +4,18 @@ import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.graphics.drawable.Icon
 import android.os.Build
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.lang.ref.WeakReference
 import java.security.MessageDigest
 
@@ -154,6 +161,11 @@ class NotyNotificationListenerService : NotificationListenerService() {
         val extras = notification.extras
         val appName = resolveAppName(sourcePackage)
         val title = resolveTitle(extras)
+        val media = captureMediaIfAllowed(
+            sourcePackage = sourcePackage,
+            statusBarNotification = statusBarNotification,
+            notification = notification,
+        )
 
         val messagingCaptures = extractMessagingCaptures(
             extras = extras,
@@ -171,6 +183,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
                     body = message.body,
                     receivedAtEpochMs = message.receivedAtEpochMs,
                     captureId = message.captureId,
+                    media = media.takeIf { !capturedAny },
                 )
                 capturedAny = capturedAny || captured
             }
@@ -183,7 +196,11 @@ class NotyNotificationListenerService : NotificationListenerService() {
         var body = resolveBody(extras, notification)
 
         if (title.isEmpty() && body.isEmpty()) {
-            body = "[Notificacion sin texto o multimedia]"
+            body = when (media?.type) {
+                "sticker" -> "[Sticker]"
+                "photo" -> "[Imagen]"
+                else -> "[Notificacion sin texto o multimedia]"
+            }
         }
 
         val resolvedTitle = title.ifEmpty { sourcePackage }
@@ -206,6 +223,7 @@ class NotyNotificationListenerService : NotificationListenerService() {
             body = body,
             receivedAtEpochMs = statusBarNotification.postTime,
             captureId = buildContentCaptureId(statusBarNotification, resolvedTitle, body),
+            media = media,
         )
 
         if (captured) {
@@ -290,13 +308,15 @@ class NotyNotificationListenerService : NotificationListenerService() {
         body: String,
         receivedAtEpochMs: Long,
         captureId: String,
+        media: CapturedMedia? = null,
     ): Boolean {
         if (NotificationCaptureStore.isIgnored(applicationContext, captureId)) {
+            media?.path?.let { File(it).delete() }
             NotificationCaptureStore.markSkipped(applicationContext, sourcePackage, "ignorada")
             return false
         }
 
-        return NotificationCaptureStore.append(
+        val captured = NotificationCaptureStore.append(
             context = applicationContext,
             payload = mapOf(
                 "id" to captureId,
@@ -306,8 +326,17 @@ class NotyNotificationListenerService : NotificationListenerService() {
                 "body" to body,
                 "receivedAtEpochMs" to receivedAtEpochMs,
                 "isUnread" to true,
+                "mediaPath" to media?.path,
+                "mediaType" to media?.type,
+                "mediaMimeType" to media?.mimeType,
+                "mediaSizeBytes" to media?.sizeBytes,
             ),
         )
+
+        if (!captured) {
+            media?.path?.let { File(it).delete() }
+        }
+        return captured
     }
 
     private fun notifyFlutter() {
@@ -425,6 +454,117 @@ class NotyNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private fun captureMediaIfAllowed(
+        sourcePackage: String,
+        statusBarNotification: StatusBarNotification,
+        notification: Notification,
+    ): CapturedMedia? {
+        return try {
+            val settings = MediaCaptureSettingsStore.get(applicationContext)
+            if (!settings.enabled) {
+                return null
+            }
+
+            val bitmap = extractNotificationPicture(notification) ?: return null
+            val mediaType = classifyMedia(bitmap)
+            if (mediaType == "sticker" && !settings.saveStickers) {
+                return null
+            }
+            if (mediaType == "photo" && !settings.savePhotos) {
+                return null
+            }
+
+            saveMediaBitmap(
+                bitmap = bitmap,
+                mediaType = mediaType,
+                captureId = "${statusBarNotification.key}:media:${stableHash("${bitmap.width}x${bitmap.height}:${statusBarNotification.postTime}")}",
+            )
+        } catch (e: Exception) {
+            NotificationCaptureStore.markError(applicationContext, e)
+            null
+        }
+    }
+
+    private fun extractNotificationPicture(notification: Notification): Bitmap? {
+        val extras = notification.extras ?: return null
+
+        @Suppress("DEPRECATION")
+        val picture = extras.getParcelable<Bitmap>(Notification.EXTRA_PICTURE)
+        if (picture != null) {
+            return picture
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val pictureIcon = extras.getParcelable<Icon>(Notification.EXTRA_PICTURE_ICON)
+            if (pictureIcon != null) {
+                return drawableToBitmap(pictureIcon.loadDrawable(applicationContext))
+            }
+        }
+
+        return null
+    }
+
+    private fun classifyMedia(bitmap: Bitmap): String {
+        val longestSide = maxOf(bitmap.width, bitmap.height)
+        return if (longestSide <= 512) "sticker" else "photo"
+    }
+
+    private fun saveMediaBitmap(
+        bitmap: Bitmap,
+        mediaType: String,
+        captureId: String,
+    ): CapturedMedia? {
+        return try {
+            val directory = File(applicationContext.filesDir, "noty_media")
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
+
+            val format = if (mediaType == "sticker") {
+                Bitmap.CompressFormat.PNG
+            } else {
+                Bitmap.CompressFormat.JPEG
+            }
+            val extension = if (mediaType == "sticker") "png" else "jpg"
+            val mimeType = if (mediaType == "sticker") "image/png" else "image/jpeg"
+            val file = File(directory, "${stableHash(captureId)}-${System.currentTimeMillis()}.$extension")
+
+            val bytes = ByteArrayOutputStream().use { output ->
+                bitmap.compress(format, if (mediaType == "sticker") 100 else 88, output)
+                output.toByteArray()
+            }
+            file.writeBytes(bytes)
+
+            CapturedMedia(
+                path = file.absolutePath,
+                type = mediaType,
+                mimeType = mimeType,
+                sizeBytes = bytes.size,
+            )
+        } catch (e: Exception) {
+            NotificationCaptureStore.markError(applicationContext, e)
+            null
+        }
+    }
+
+    private fun drawableToBitmap(drawable: Drawable?): Bitmap? {
+        if (drawable == null) {
+            return null
+        }
+
+        if (drawable is BitmapDrawable && drawable.bitmap != null) {
+            return drawable.bitmap
+        }
+
+        val width = drawable.intrinsicWidth.takeIf { it > 0 } ?: 512
+        val height = drawable.intrinsicHeight.takeIf { it > 0 } ?: 512
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
+    }
+
     private fun stableHash(value: String): String {
         val bytes = MessageDigest.getInstance("SHA-256")
             .digest(value.toByteArray(Charsets.UTF_8))
@@ -436,6 +576,13 @@ class NotyNotificationListenerService : NotificationListenerService() {
         val title: String,
         val body: String,
         val receivedAtEpochMs: Long,
+    )
+
+    private data class CapturedMedia(
+        val path: String,
+        val type: String,
+        val mimeType: String,
+        val sizeBytes: Int,
     )
 
 }

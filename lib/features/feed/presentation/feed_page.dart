@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -283,7 +284,10 @@ class _FeedPageState extends State<FeedPage> {
 
     for (final item in widget.notifications) {
       if (item.appName == appName) {
-        return widget.appIcons[item.appPackage];
+        final icon = widget.appIcons[item.appPackage];
+        if (icon != null) {
+          return icon;
+        }
       }
     }
 
@@ -395,6 +399,14 @@ class _NotificationCard extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (item.hasMedia) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.image_outlined,
+                            size: 16,
+                            color: labelColor,
+                          ),
+                        ],
                         Row(
                           children: [
                             if (item.isUnread)
@@ -557,11 +569,62 @@ class _NotificationDetailsSheet extends StatelessWidget {
                   item.body,
                   style: theme.textTheme.bodyLarge?.copyWith(height: 1.35),
                 ),
+                if (item.hasMedia) ...[
+                  const SizedBox(height: 16),
+                  _NotificationMediaPreview(item: item),
+                ],
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NotificationMediaPreview extends StatelessWidget {
+  const _NotificationMediaPreview({required this.item});
+
+  final NotificationItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaPath = item.mediaPath?.trim();
+    if (mediaPath == null || mediaPath.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final file = File(mediaPath);
+    if (!file.existsSync()) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final mediaLabel = item.mediaType == 'sticker' ? 'Sticker' : 'Imagen';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          mediaLabel,
+          style: theme.textTheme.labelLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 360),
+            child: Image.file(
+              file,
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -37,6 +37,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
   String? _notificationsError;
   Map<String, Object?> _nativeDiagnostics = const <String, Object?>{};
   Map<String, Uint8List> _appIcons = const <String, Uint8List>{};
+  MediaCaptureSettings _mediaCaptureSettings = const MediaCaptureSettings();
   List<NotificationItem> _notifications = const <NotificationItem>[];
 
   static const List<String> _titles = <String>['Inicio', 'Ajustes'];
@@ -113,6 +114,9 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
       final nativeDiagnostics = widget.enableLocalPersistence
           ? await _shellService.getNativeDiagnostics()
           : const <String, Object?>{};
+      final mediaCaptureSettings = widget.enableLocalPersistence
+          ? await _shellService.getMediaCaptureSettings()
+          : const MediaCaptureSettings();
       final appIcons = widget.enableLocalPersistence
           ? await _shellService.getAppIcons(
               result.notifications
@@ -134,10 +138,20 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         _notificationsError = result.errorMessage;
         _nativeDiagnostics = nativeDiagnostics;
         _appIcons = appIcons;
+        _mediaCaptureSettings = mediaCaptureSettings;
       });
     } finally {
       _isRefreshingNotifications = false;
     }
+  }
+
+  Future<void> _updateMediaCaptureSettings(
+    MediaCaptureSettings settings,
+  ) async {
+    setState(() {
+      _mediaCaptureSettings = settings;
+    });
+    await _shellService.updateMediaCaptureSettings(settings);
   }
 
   void _openAppSelection() {
@@ -234,6 +248,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         currentThemeMode: widget.currentThemeMode,
         notificationListenerEnabled: _isNotificationListenerEnabled,
         nativeDiagnostics: _nativeDiagnostics,
+        mediaCaptureSettings: _mediaCaptureSettings,
         isDataBusy: _isDataBusy,
         onOpenNotificationSettings:
             _shellService.openNotificationListenerSettings,
@@ -241,6 +256,7 @@ class _NotyShellState extends State<NotyShell> with WidgetsBindingObserver {
         onExportHistory: _exportHistory,
         onImportHistory: _importHistory,
         onClearHistory: _clearHistory,
+        onMediaCaptureSettingsChanged: _updateMediaCaptureSettings,
         onThemeModeChanged: widget.onThemeChanged,
       ),
     ];

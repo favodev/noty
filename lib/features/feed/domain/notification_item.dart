@@ -7,6 +7,10 @@ class NotificationItem {
     required this.body,
     required this.receivedAt,
     required this.isUnread,
+    this.mediaPath,
+    this.mediaType,
+    this.mediaMimeType,
+    this.mediaSizeBytes,
   });
 
   final String id;
@@ -16,6 +20,12 @@ class NotificationItem {
   final String body;
   final DateTime receivedAt;
   final bool isUnread;
+  final String? mediaPath;
+  final String? mediaType;
+  final String? mediaMimeType;
+  final int? mediaSizeBytes;
+
+  bool get hasMedia => mediaPath != null && mediaPath!.trim().isNotEmpty;
 
   bool matchesQuery(String query) {
     final normalized = query.trim().toLowerCase();
@@ -37,6 +47,10 @@ class NotificationItem {
       'body': body,
       'receivedAt': receivedAt.toIso8601String(),
       'isUnread': isUnread,
+      'mediaPath': mediaPath,
+      'mediaType': mediaType,
+      'mediaMimeType': mediaMimeType,
+      'mediaSizeBytes': mediaSizeBytes,
     };
   }
 
@@ -49,6 +63,10 @@ class NotificationItem {
       body: json['body'] as String,
       receivedAt: DateTime.parse(json['receivedAt'] as String),
       isUnread: json['isUnread'] as bool? ?? false,
+      mediaPath: json['mediaPath'] as String?,
+      mediaType: json['mediaType'] as String?,
+      mediaMimeType: json['mediaMimeType'] as String?,
+      mediaSizeBytes: (json['mediaSizeBytes'] as num?)?.toInt(),
     );
   }
 }

@@ -6,12 +6,15 @@ void main() {
   testWidgets('Noty shell renders and navigates to local settings', (
     WidgetTester tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1080, 1920));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
     await tester.pumpWidget(const NotyApp(enableLocalPersistence: false));
     await tester.pumpAndSettle();
 
     expect(find.text('Historial reciente'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.tap(find.text('Ajustes'));
     await tester.pumpAndSettle();
 
     expect(find.text('Ajustes'), findsWidgets);

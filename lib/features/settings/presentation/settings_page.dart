@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:noty/features/shell/data/noty_shell_service.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -6,24 +7,29 @@ class SettingsPage extends StatelessWidget {
     required this.currentThemeMode,
     required this.notificationListenerEnabled,
     required this.nativeDiagnostics,
+    required this.mediaCaptureSettings,
     required this.isDataBusy,
     required this.onOpenNotificationSettings,
     required this.onOpenAppSelection,
     required this.onExportHistory,
     required this.onImportHistory,
     required this.onClearHistory,
+    required this.onMediaCaptureSettingsChanged,
     this.onThemeModeChanged,
   });
 
   final ThemeMode currentThemeMode;
   final bool notificationListenerEnabled;
   final Map<String, Object?> nativeDiagnostics;
+  final MediaCaptureSettings mediaCaptureSettings;
   final bool isDataBusy;
   final Future<void> Function() onOpenNotificationSettings;
   final VoidCallback onOpenAppSelection;
   final Future<void> Function() onExportHistory;
   final Future<void> Function() onImportHistory;
   final Future<void> Function() onClearHistory;
+  final Future<void> Function(MediaCaptureSettings settings)
+  onMediaCaptureSettingsChanged;
   final void Function(ThemeMode mode)? onThemeModeChanged;
 
   @override
@@ -56,6 +62,11 @@ class SettingsPage extends StatelessWidget {
           isBusy: isDataBusy,
           onExportHistory: onExportHistory,
           onImportHistory: onImportHistory,
+        ),
+        const SizedBox(height: 12),
+        _MediaCaptureCard(
+          settings: mediaCaptureSettings,
+          onChanged: onMediaCaptureSettingsChanged,
         ),
         const SizedBox(height: 12),
         _ThemeCard(
@@ -337,6 +348,67 @@ class _DataPortabilityCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MediaCaptureCard extends StatelessWidget {
+  const _MediaCaptureCard({required this.settings, required this.onChanged});
+
+  final MediaCaptureSettings settings;
+  final Future<void> Function(MediaCaptureSettings settings) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Imágenes y stickers',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Solo se guardan si Android entrega la imagen dentro de la notificación. Los archivos quedan en almacenamiento privado de Noty.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Guardar stickers'),
+              subtitle: const Text('Ideal para stickers y previews pequeñas.'),
+              value: settings.saveStickers,
+              onChanged: (value) => onChanged(
+                MediaCaptureSettings(
+                  saveStickers: value,
+                  savePhotos: settings.savePhotos,
+                ),
+              ),
+            ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Guardar fotos'),
+              subtitle: const Text('Puede ocupar bastante más espacio.'),
+              value: settings.savePhotos,
+              onChanged: (value) => onChanged(
+                MediaCaptureSettings(
+                  saveStickers: settings.saveStickers,
+                  savePhotos: value,
+                ),
+              ),
             ),
           ],
         ),

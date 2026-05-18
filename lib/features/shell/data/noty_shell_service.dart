@@ -4,6 +4,8 @@ import 'package:noty/features/feed/data/local_notifications_repository.dart';
 import 'package:noty/features/feed/data/native_notifications_bridge.dart';
 import 'package:noty/features/feed/data/notification_archive_service.dart';
 import 'package:noty/features/feed/domain/notification_item.dart';
+export 'package:noty/features/feed/data/native_notifications_bridge.dart'
+    show MediaCaptureSettings;
 
 class NotyShellLoadResult {
   const NotyShellLoadResult({
@@ -89,6 +91,14 @@ class NotyShellService {
 
   Future<Map<String, Object?>> getNativeDiagnostics() async {
     return _nativeBridge.getNativeDiagnostics();
+  }
+
+  Future<MediaCaptureSettings> getMediaCaptureSettings() async {
+    return _nativeBridge.getMediaCaptureSettings();
+  }
+
+  Future<void> updateMediaCaptureSettings(MediaCaptureSettings settings) async {
+    await _nativeBridge.updateMediaCaptureSettings(settings);
   }
 
   Future<void> updateMonitoredPackages(List<String> packages) async {

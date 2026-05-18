@@ -68,6 +68,25 @@ class MainActivity : FlutterActivity() {
 						result.success(NotificationCaptureStore.diagnostics(applicationContext))
 					}
 
+					"getMediaCaptureSettings" -> {
+						val settings = MediaCaptureSettingsStore.get(applicationContext)
+						result.success(
+							mapOf(
+								"saveStickers" to settings.saveStickers,
+								"savePhotos" to settings.savePhotos,
+							)
+						)
+					}
+
+					"updateMediaCaptureSettings" -> {
+						MediaCaptureSettingsStore.update(
+							applicationContext,
+							call.argument<Boolean>("saveStickers") ?: false,
+							call.argument<Boolean>("savePhotos") ?: false,
+						)
+						result.success(null)
+					}
+
 					"ignoreCapturedNotification" -> {
 						val notificationId = call.argument<String>("id").orEmpty()
 						NotificationCaptureStore.ignoreNotification(applicationContext, notificationId)

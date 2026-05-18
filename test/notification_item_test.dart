@@ -63,6 +63,22 @@ void main() {
       expect(restored.receivedAt, item.receivedAt);
       expect(restored.isUnread, item.isUnread);
     });
+
+    test('serializes optional media metadata', () {
+      final item = _createItem(
+        mediaPath: '/private/noty_media/item.png',
+        mediaType: 'sticker',
+        mediaMimeType: 'image/png',
+        mediaSizeBytes: 2048,
+      );
+      final restored = NotificationItem.fromJson(item.toJson());
+
+      expect(restored.mediaPath, item.mediaPath);
+      expect(restored.mediaType, item.mediaType);
+      expect(restored.mediaMimeType, item.mediaMimeType);
+      expect(restored.mediaSizeBytes, item.mediaSizeBytes);
+      expect(restored.hasMedia, true);
+    });
   });
 }
 
@@ -73,6 +89,10 @@ NotificationItem _createItem({
   String title = 'Test Title',
   String body = 'Test body',
   bool isUnread = false,
+  String? mediaPath,
+  String? mediaType,
+  String? mediaMimeType,
+  int? mediaSizeBytes,
 }) {
   return NotificationItem(
     id: id,
@@ -82,5 +102,9 @@ NotificationItem _createItem({
     body: body,
     receivedAt: DateTime(2024, 1, 1),
     isUnread: isUnread,
+    mediaPath: mediaPath,
+    mediaType: mediaType,
+    mediaMimeType: mediaMimeType,
+    mediaSizeBytes: mediaSizeBytes,
   );
 }
